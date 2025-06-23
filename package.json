@@ -8,10 +8,13 @@
   },
   "private": true,
   "dependencies": {
+    "cookie-parser": "^1.4.7",
     "dotenv": "^16.5.0",
     "ejs": "^3.1.10",
     "express": "^5.1.0",
-    "helmet": "^8.1.0"
+    "helmet": "^8.1.0",
+    "i18n": "^0.15.1",
+    "iyzipay": "^2.0.64"
   },
   "devDependencies": {
     "nodemon": "^3.1.10"

@@ -1,23 +1,48 @@
-require('dotenv').config()
+require('dotenv').config();
+const i18n = require('i18n');
+const path = require('path');
+const cookieParser = require('cookie-parser');
 
-const express = require('express')
-const helmet = require('helmet')
-const router = require("./router")
+const express = require('express');
+const helmet = require('helmet');
+const router = require("./router");
 
-const app = express()
-const port = process.env.PORT || 3000
-const host = process.env.HOST || 'localhost'
+const app = express();
+const port = process.env.PORT || 3000;
+const host = process.env.HOST || 'localhost';
 
-app.disable('x-powered-by')
-app.use(helmet())
+app.disable('x-powered-by');
+app.use(helmet());
 app.use('/data', express.static('data'));
-app.use('/assets', express.static('assets'))
-// app.use(express.json())
+app.use('/assets', express.static('assets'));
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
+app.use(cookieParser());
 
-app.set('view engine', 'ejs')
-app.set('views', './views')
+i18n.configure({
+    locales: ['en', 'es', 'ru', 'he', 'zh', 'ar', 'pt', 'fr', 'de', 'hi', 'ja', 'it', 'ko', 'tr', 'nl', 'pl', 'vi', 'th', 'uk', 'ro', 'id'],
+    directory: path.join(__dirname, 'locales'),
+    defaultLocale: 'en',
+    queryParameter: 'lang',
+    autoReload: true,
+    syncFiles: true,
+    cookie: 'lang'
+});
 
-app.use(router)
+app.use(i18n.init);
+
+app.set('view engine', 'ejs');
+app.set('views', './views');
+
+app.use((req, res, next) => {
+  res.setHeader(
+    "Content-Security-Policy",
+    "img-src 'self' data: https:;"
+  );
+  next();
+});
+
+app.use(router);
 
 app.listen(port, () => {
     console.log(`Example app listening on http://${host}:${port}`)

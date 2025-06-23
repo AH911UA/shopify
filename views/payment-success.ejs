@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="<%= locale %>">
+<head>
+  <meta charset="UTF-8">
+  <script>
+    const PIXEL_ID = '<%= fb %>';
+  </script>
+  <script src="/assets/js/fb-pixel.js"></script>
+
+  <title><%= __('payment_success_title') %></title>
+  <style>
+    body {
+      background-color: #f7f9fc;
+      font-family: Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+    .container {
+      background: white;
+      padding: 40px 30px;
+      border-radius: 12px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+      max-width: 500px;
+      text-align: center;
+    }
+    h1 {
+      color: #2e7d32;
+      font-size: 28px;
+      margin-bottom: 20px;
+    }
+    p {
+      color: #444;
+      font-size: 16px;
+      line-height: 1.6;
+    }
+    .icon {
+      font-size: 40px;
+      color: #2e7d32;
+      margin-bottom: 15px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="icon">✅</div>
+    <h1><%= __('payment_success_heading') %></h1>
+    <p><%= __('payment_success_received') %></p>
+    <p><%- __('payment_success_delivery') %></p>
+    <p><%= __('payment_success_thanks') %></p>
+  </div>
+
+  <script>
+    window.FB_PURCHASE_VALUE = parseFloat('<%= price || 0 %>');
+    window.FB_EXTERNAL_ID = '<%= fb %>';
+  </script>
+  <script src="/assets/js/fb-purchase.js"></script>
+</body>
+</html>

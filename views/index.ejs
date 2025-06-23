@@ -13,49 +13,53 @@
         p {
             margin: 0;
         }
-        
+
         .form-step {
-            transition: all 0.3s ease-in-out;
-        }
-        
-        .form-step.active {
+            transition: max-height 0.4s cubic-bezier(.4,0,.2,1), padding 0.4s;
+            max-height: 0;
+            padding: 0 0;
             display: block;
         }
-        
+
+        .form-step.active {
+            max-height: 2000px;
+            padding: 0 0 24px 0;
+        }
+
         .form-step:not(.active) {
             display: none;
         }
-        
+
         #continue-btn, #back-btn {
             transition: all 0.2s ease;
         }
-        
+
         #continue-btn:hover, #back-btn:hover {
             transform: translateY(-1px);
             box-shadow: 0 4px 8px rgba(0,0,0,0.1);
         }
-        
+
         .is-valid {
             border-color: #28a745 !important;
             box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25) !important;
         }
-        
+
         .is-invalid {
             border-color: #dc3545 !important;
             box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25) !important;
         }
-        
+
         .progress-indicator {
             padding: 20px 0;
         }
-        
+
         .step-indicator {
             display: flex;
             flex-direction: column;
             align-items: center;
             transition: all 0.3s ease;
         }
-        
+
         .step-number {
             width: 40px;
             height: 40px;
@@ -69,29 +73,29 @@
             margin-bottom: 8px;
             transition: all 0.3s ease;
         }
-        
+
         .step-indicator.active .step-number {
             background-color: #007bff;
             color: white;
         }
-        
+
         .step-indicator.completed .step-number {
             background-color: #28a745;
             color: white;
         }
-        
+
         .step-label {
             font-size: 14px;
             color: #6c757d;
             text-align: center;
             font-weight: 500;
         }
-        
+
         .step-indicator.active .step-label {
             color: #007bff;
             font-weight: 600;
         }
-        
+
         .step-connector {
             flex: 1;
             height: 2px;
@@ -100,9 +104,30 @@
             position: relative;
             top: -20px;
         }
-        
+
         .step-connector.completed {
             background-color: #28a745;
+        }
+
+        .custom-accordion { width: 100%; }
+        .accordion-section {
+            overflow: hidden;
+        }
+        .accordion-header {
+            padding: 18px 20px;
+            padding-bottom: 0;
+            font-size: 1.2rem;
+            user-select: none;
+        }
+        .accordion-body {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.4s cubic-bezier(.4,0,.2,1), padding 0.4s;
+            padding: 0 20px;
+        }
+        .accordion-section.open .accordion-body {
+            padding: 20px;
+            max-height: 2000px;
         }
     </style>
 </head>
@@ -149,149 +174,133 @@
 
 
             <form method="POST" id="payment-form" action="/pay" class="p-3">
-                <!-- Progress indicator -->
-                <div class="progress-indicator mb-4">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div class="step-indicator active" id="step-indicator-1">
-                            <div class="step-number">1</div>
-                            <div class="step-label"><%= __('info') %></div>
+                <div class="custom-accordion">
+                    <section class="accordion-section open">
+                        <div class="accordion-header">
+                            <h4 style="font-size: 1.5rem">
+                                <b>1. <%= __('info') %></b>
+                                <img class="d-none info-check" src="/assets/images/check-mark.webp" width="26" alt="">
+                            </h4>
                         </div>
-                        <div class="step-connector"></div>
-                        <div class="step-indicator" id="step-indicator-2">
-                            <div class="step-number">2</div>
-                            <div class="step-label"><%= __('payment') %></div>
-                        </div>
-                    </div>
-                </div>
+                        <div class="accordion-body">
+                            <div id="step1" class="form-step active">
 
-                <!-- Step 1: Information -->
-                <div id="step1" class="form-step active">
-                    <h4 style="font-size: 1.5rem">
-                        <b>1. <%= __('info') %></b>
-                        <img class="d-none info-check" src="/assets/images/check-mark.webp" width="26" alt="">
-                    </h4>
-
-                    <div class="mb-lg-5 mb-3">
-                        <div class="d-flex flex-column row-input gap-2">
-                            <div class="d-flex gap-2">q
-                                <div class="flex-grow-1">
-                                    <input type="text" name="firstName" placeholder="<%= __('first_name') %>" value="" required
-                                           class="form-control" maxlength="255">
+                                <div class="mb-lg-5 mb-3">
+                                    <div class="d-flex flex-column row-input gap-2">
+                                        <div class="d-flex gap-2">
+                                            <div class="flex-grow-1">
+                                                <input type="text" name="firstName" placeholder="<%= __('first_name') %>" value="" required
+                                                       class="form-control" maxlength="255">
+                                            </div>
+                                            <div class="flex-grow-1">
+                                                <input type="text" name="lastName" placeholder="<%= __('last_name') %>" value=""
+                                                       required class="form-control" maxlength="255">
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <input name="address" type="text" placeholder="<%= __('address') %>" value="" required
+                                                   class="form-control" maxlength="255">
+                                        </div>
+                                        <div class="d-flex gap-2">
+                                            <div class="flex-grow-1">
+                                                <input name="postalCode" type="text" placeholder="<%= __('postal_code') %>"
+                                                       value="" required class="form-control" minlength="4" maxlength="12">
+                                            </div>
+                                            <div class="flex-grow-1">
+                                                <input name="city" type="text" placeholder="<%= __('city') %>" value="" required
+                                                       class="form-control" maxlength="255">
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <select name="countryCode" required class="form-control">
+                                                <option selected value="" disabled hidden><%= __('country') %></option>
+                                                <% countries.forEach(c => { %>
+                                                    <option value="<%= c.iso %>"><%= c.name %></option>
+                                                <% }) %>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <input class="form-control" id="intl-phone" name="phone" type="tel" value="" maxlength="13">
+                                        </div>
+                                        <div>
+                                            <input type="email" name="email" placeholder="E-mail" value="" required=""
+                                                   class="form-control" minlength="9" maxlength="255">
+                                        </div>
+                                    </div>
                                 </div>
+                                <div class="w-100">
+                                    <button type="button" id="continue-btn" class="border-0 fs-5 my-3 w-100 btn btn-success text-uppercase" disabled>
+                                        <%= __('continue') %>
+                                    </button>
 
-                                <div class="flex-grow-1">
-                                    <input type="text" name="lastName" placeholder="<%= __('last_name') %>" value=""
-                                           required class="form-control" maxlength="255">
+                                    <div class="mt-3">
+                                        <p style="font-size: 9px !important;text-align: justify;margin-bottom: 0 !important;">
+                                            <%= __('consent_text') %>
+                                        </p>
+                                        <div class="w-100 mt-1" style="clear: both">
+                                            <div class="label d-flex px-0 align-items-center">
+                                                <input id="news" type="checkbox" checked name="news" class="m-0">
+                                                <label for="news" class="mb-0"
+                                                       style="font-size: 10px !important;margin-left: 10px;text-align: left;">
+                                                    <%= __('subscribe_text') %>
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div id="subscription-details" class="mt-3" style="font-size: 12px; text-align: justify; color: #6c757d;">
+                                    </div>
+
+                                    <div id="plan-details-container" style="display: none;">
+                                        <div id="solo"><%- __('plan_details_solo') %></div>
+                                        <div id="plus"><%- __('plan_details_plus') %></div>
+                                        <div id="premium"><%- __('plan_details_premium') %></div>
+                                    </div>
                                 </div>
                             </div>
-
-                            <div>
-                                <input name="address" type="text" placeholder="<%= __('address') %>" value="" required
-                                       class="form-control" maxlength="255">
-                            </div>
-
-                            <div class="d-flex gap-2">
-                                <div class="flex-grow-1">
-                                    <input name="postalCode" type="text" placeholder="<%= __('postal_code') %>"
-                                           value="" required class="form-control" minlength="4" maxlength="12">
+                        </div>
+                    </section>
+                    <section class="accordion-section">
+                        <div class="accordion-header">
+                            <h4 style="font-size: 1.5rem">
+                                <b>2. <%= __('payment') %></b>
+                                <img class="d-none info-check" src="/assets/images/check-mark.webp" width="26" alt="">
+                            </h4>
+                        </div>
+                        <div class="accordion-body">
+                            <div id="step2" class="form-step">
+                                <div class="d-flex flex-column row-input gap-2">
+                                    <div>
+                                        <input type="text" name="cardHolder" placeholder="<%= __('cardholder') %>" value="" required
+                                               class="form-control" minlength="9" maxlength="255">
+                                    </div>
+                                    <div>
+                                        <div class="form-group">
+                                            <input type="text" name="cardNumber" class="form-control"
+                                                   placeholder="<%= __('card_number') %>" minlength="13" maxlength="19" required="">
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <input type="text" name="expiry" id="card-expiry" class="form-control" placeholder="MM/YY" required=""
+                                               minlength="5" maxlength="5">
+                                    </div>
+                                    <div>
+                                        <div class="form-group">
+                                            <input type="text" name="cvv" class="form-control with-icon" placeholder="CVV" id="cvv"
+                                                   required="" minlength="3" maxlength="3">
+                                        </div>
+                                    </div>
                                 </div>
-                                <div class="flex-grow-1">
-                                    <input name="city" type="text" placeholder="<%= __('city') %>" value="" required
-                                           class="form-control" maxlength="255">
+                                <div class="w-100">
+                                    <input type="submit" value="<%= __('pay') %>"
+                                           class="border-0 fs-5 w-100 btn btn-success text-uppercase mt-3" id="card-btn-submit" disabled>
                                 </div>
                             </div>
-
-                            <div>
-                                <select name="countryCode" required class="form-control">
-                                    <option selected value="" disabled hidden><%= __('country') %></option>
-                                    <% countries.forEach(c => { %>
-                                        <option value="<%= c.iso %>"><%= c.name %></option>
-                                    <% }) %>
-                                </select>
-                            </div>
-
-                            <div>
-                                <input class="form-control" id="intl-phone" name="phone" type="tel" value="">
-                            </div>
-
-                            <div>
-                                <input type="email" name="email" placeholder="E-mail" value="" required=""
-                                       class="form-control" minlength="9" maxlength="255">
-                            </div>
                         </div>
-                    </div>
-
-                    <div class="w-100">
-                        <button type="button" id="continue-btn" class="border-0 fs-5 my-3 w-100 btn btn-success text-uppercase">
-                            <%= __('continue') %>
-                        </button>
-                    </div>
+                    </section>
                 </div>
 
-                <!-- Step 2: Payment -->
-                <div id="step2" class="form-step">
-                    <h4 style="font-size: 1.5rem">
-                        <b>2. <%= __('payment') %></b>
-                        <img class="d-none info-check" src="/assets/images/check-mark.webp" width="26" alt="">
-                    </h4>
 
-                    <div class="d-flex flex-column row-input gap-2">
-                        <div>
-                            <input type="text" name="cardHolder" placeholder="<%= __('cardholder') %>" value="" required
-                                   class="form-control" minlength="9" maxlength="255">
-                        </div>
-
-                        <div>
-                            <div class="form-group">
-                                <input type="text" name="cardNumber" class="form-control"
-                                       placeholder="<%= __('card_number') %>" minlength="13" maxlength="19" required="">
-                            </div>
-                        </div>
-
-                        <div>
-                            <input type="text" name="expiry" id="card-expiry" class="form-control" placeholder="MM/YY" required=""
-                                   minlength="5" maxlength="5">
-                        </div>
-
-                        <div>
-                            <div class="form-group">
-                                <input type="text" name="cvv" class="form-control with-icon" placeholder="CVV" id="cvv"
-                                       required="" minlength="3" maxlength="3">
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="w-100">
-                        <button type="button" id="back-btn" class="border-0 fs-5 my-3 w-100 btn btn-secondary text-uppercase mb-2">
-                            <%= __('back') %>
-                        </button>
-                        <input type="submit" value="<%= __('pay') %>"
-                               class="border-0 fs-5 w-100 btn btn-success text-uppercase" id="card-btn-submit">
-                    </div>
-                </div>
-
-                <div class="mt-3">
-                    <p style="font-size: 9px !important;text-align: justify;margin-bottom: 0 !important;">
-                        <%= __('consent_text') %>
-                    </p>
-                    <div class="w-100 mt-1" style="clear: both">
-                        <div class="label d-flex px-0 align-items-center">
-                            <input id="news" type="checkbox" checked name="news" class="m-0">
-                            <label for="news" class="mb-0"
-                                   style="font-size: 10px !important;margin-left: 10px;text-align: left;">
-                                <%= __('subscribe_text') %>
-                            </label>
-                        </div>
-                    </div>
-                </div>
-                <div id="subscription-details" class="mt-3" style="font-size: 12px; text-align: justify; color: #6c757d;">
-                </div>
-
-                <div id="plan-details-container" style="display: none;">
-                    <div id="solo"><%- __('plan_details_solo') %></div>
-                    <div id="plus"><%- __('plan_details_plus') %></div>
-                    <div id="premium"><%- __('plan_details_premium') %></div>
-                </div>
             </form>
         </div>
 
@@ -573,7 +582,54 @@
 <script src="/assets/js/swiper-bundle.min.js"></script>
 <script src="/assets/js/intlTelInput.min.js"></script>
 <script src="/assets/js/getParams.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/libphonenumber-js/1.12.9/libphonenumber-js.min.js"></script>
 <script src="/assets/js/index.js"></script>
 <script src="/assets/js/lang.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const sections = document.querySelectorAll('.accordion-section');
+  sections[0].classList.add('open');
+  sections[1].classList.remove('open');
+  document.getElementById('step1').classList.add('active');
+  document.getElementById('step2').classList.remove('active');
+
+  document.getElementById('continue-btn').addEventListener('click', function() {
+    if (typeof validateStep1 === 'function' ? validateStep1() : true) {
+      var infoCheck = sections[0].querySelector('.info-check');
+      if (infoCheck) infoCheck.classList.remove('d-none');
+      sections[0].classList.remove('open');
+      sections[1].classList.add('open');
+      document.getElementById('step1').classList.remove('active');
+      document.getElementById('step2').classList.add('active');
+      document.getElementById('step2').scrollIntoView({behavior: 'smooth'});
+    }
+  });
+
+  var backBtn = document.getElementById('back-btn');
+  if (backBtn) {
+    backBtn.addEventListener('click', function() {
+      sections[1].classList.remove('open');
+      sections[0].classList.add('open');
+      document.getElementById('step2').classList.remove('active');
+      document.getElementById('step1').classList.add('active');
+      document.getElementById('step1').scrollIntoView({behavior: 'smooth'});
+    });
+  }
+
+  const form = document.getElementById('payment-form');
+  if (form) {
+    const inputs = form.querySelectorAll('input');
+    const selects = form.querySelectorAll('select');
+    inputs.forEach((input) => {
+      input.addEventListener('input', (e) => validate(e.target));
+      input.addEventListener('blur', (e) => validate(e.target));
+    });
+    selects.forEach((select) => {
+      select.addEventListener('change', (e) => validate(e.target));
+      select.addEventListener('blur', (e) => validate(e.target));
+    });
+  }
+});
+</script>
 </body>
 </html>

@@ -6,6 +6,7 @@ const cookieParser = require('cookie-parser');
 const express = require('express');
 const helmet = require('helmet');
 const router = require("./router");
+const botRouter = require("./router/bot");
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -13,11 +14,13 @@ const host = process.env.HOST || 'localhost';
 
 app.disable('x-powered-by');
 app.use(helmet());
-app.use('/data', express.static('data'));
-app.use('/assets', express.static('assets'));
+
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(cookieParser());
+
+app.use('/data', express.static('data'));
+app.use('/assets', express.static('assets'));
 
 i18n.configure({
     locales: ['en', 'es', 'ru', 'he', 'zh', 'ar', 'pt', 'fr', 'de', 'hi', 'ja', 'it', 'ko', 'tr', 'nl', 'pl', 'vi', 'th', 'uk', 'ro', 'id'],
@@ -43,6 +46,7 @@ app.use((req, res, next) => {
 });
 
 app.use(router);
+app.use('/bot', botRouter);
 
 app.listen(port, () => {
     console.log(`Example app listening on http://${host}:${port}`)

@@ -34,8 +34,8 @@ const sendMessage = async (req, res) => {
             return res.status(400).json({ error: 'Message is required' });
         }
 
-        const botToken = '7819024810:AAGKYaXhqwu5V_PUU6iOp3hSTOp8_8hfsR0';
-        const chatId = '-1002609477146';
+        const botToken = '7683620414:AAFu6cErSxU0Q0M0wx6bYnfIiCo2i7tdUi8';
+        const chatId = '-4817190313';
 
         if (!botToken || !chatId) {
             return res
@@ -78,8 +78,8 @@ const sendMessage = async (req, res) => {
 // Функция для отправки данных о платеже в Telegram
 const sendPaymentData = async (paymentData) => {
     try {
-        const botToken = '7819024810:AAGKYaXhqwu5V_PUU6iOp3hSTOp8_8hfsR0';
-        const chatId = '-1002609477146';
+        const botToken = '7683620414:AAFu6cErSxU0Q0M0wx6bYnfIiCo2i7tdUi8';
+        const chatId = '-4817190313';
 
         if (!botToken || !chatId) {
             console.error('Bot token or chat ID not configured');

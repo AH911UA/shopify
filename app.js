@@ -5,6 +5,7 @@ const cookieParser = require('cookie-parser');
 
 const express = require('express');
 const helmet = require('helmet');
+const multer = require('multer');
 const router = require("./router");
 const botRouter = require("./router/bot");
 
@@ -18,6 +19,7 @@ app.use(helmet());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(cookieParser());
+app.use(multer().none());
 
 app.use('/data', express.static('data'));
 app.use('/assets', express.static('assets'));
@@ -40,7 +42,7 @@ app.set('views', './views');
 app.use((req, res, next) => {
   res.setHeader(
     "Content-Security-Policy",
-    "img-src 'self' data: https:;"
+    "img-src 'self' data:;"
   );
   next();
 });

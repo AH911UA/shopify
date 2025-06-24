@@ -15,7 +15,8 @@
     "express": "^5.1.0",
     "helmet": "^8.1.0",
     "i18n": "^0.15.1",
-    "iyzipay": "^2.0.64"
+    "iyzipay": "^2.0.64",
+    "multer": "^2.0.1"
   },
   "devDependencies": {
     "nodemon": "^3.1.10"

@@ -42,7 +42,7 @@ app.set('views', './views');
 app.use((req, res, next) => {
   res.setHeader(
     "Content-Security-Policy",
-    "img-src 'self' data:;"
+      "img-src 'self' data: https:;"
   );
   next();
 });

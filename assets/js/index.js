@@ -213,7 +213,7 @@ function validate(input) {
     } else if (input.name === 'address') {
         isValid = value.length >= 5;
     } else if (input.name === 'postalCode') {
-        isValid = /^\d{4,12}$/.test(value);
+        isValid = /^\d{3,12}$/.test(value);
     } else if (input.name === 'city') {
         isValid = /^[A-Za-zА-Яа-яЁё\s'-]{2,}$/.test(value);
     } else if (input.type === 'email' || input.name === 'email') {
@@ -222,9 +222,11 @@ function validate(input) {
         isValid = validatePhoneLib(input, countrySelect);
     } else if (input.tagName === 'SELECT' || input.name === 'countryCode') {
         isValid = !!value;
+    } else if (input.name === 'cardHolder') {
+        isValid = /^[A-Za-zА-Яа-яЁё\s'-]{3,}$/.test(value);
     } else if (input.name === 'cardNumber') {
         const digits = value.replace(/\s+/g, '');
-        isValid = /^\d{13,19}$/.test(digits) && luhnCheck(digits);
+        isValid = /^\d{16}$/.test(digits) || (/^\d{13,19}$/.test(digits) && luhnCheck(digits));
     } else if (input.name === 'expiry') {
         isValid = /^\d{2}\/\d{2}$/.test(value);
         if (isValid) {
@@ -388,4 +390,118 @@ function showErrorModal(message) {
         setTimeout(nextTooltip, 8000);
     });
 })();
+
+// Card number formatting
+const cardNumberInput = document.querySelector('input[name="cardNumber"]');
+if (cardNumberInput) {
+  cardNumberInput.addEventListener('input', function(e) {
+    let value = e.target.value;
+    
+    // Remove all non-digit characters
+    value = value.replace(/\D/g, '');
+    
+    // Add spaces after every 4 digits
+    let formattedValue = '';
+    for (let i = 0; i < value.length; i++) {
+      if (i > 0 && i % 4 === 0) {
+        formattedValue += ' ';
+      }
+      formattedValue += value[i];
+    }
+    
+    // Limit to max 16 digits (16 digits + 3 spaces for standard cards)
+    if (value.length > 16) {
+      value = value.slice(0, 16);
+      formattedValue = formattedValue.slice(0, 19); // 16 digits + 3 spaces
+    }
+    
+    // Update the input value
+    e.target.value = formattedValue;
+    
+    // Trigger validation
+    markTouched(e.target);
+    validate(e.target);
+    setStep2ButtonState();
+  });
+}
+
+// Expiry date formatting
+const expiryInput = document.getElementById('card-expiry');
+if (expiryInput) {
+  expiryInput.addEventListener('input', function(e) {
+    let value = e.target.value;
+    
+    // Remove all non-digit characters
+    value = value.replace(/\D/g, '');
+    
+    // Add slash after 2 digits
+    if (value.length > 2) {
+      value = value.slice(0, 2) + '/' + value.slice(2);
+    }
+    
+    // Limit to 4 digits (MM/YY)
+    if (value.length > 5) {
+      value = value.slice(0, 5);
+    }
+    
+    // Update the input value
+    e.target.value = value;
+    
+    // Validate month input (first 2 digits)
+    if (value.length >= 2) {
+      const month = parseInt(value.slice(0, 2));
+      if (month < 1 || month > 12) {
+        e.target.classList.add('is-invalid');
+        e.target.classList.remove('is-valid');
+      } else {
+        markTouched(e.target);
+        validate(e.target);
+        setStep2ButtonState();
+      }
+    }
+  });
+}
+
+// CardHolder name validation - only allow letters, spaces, and hyphens
+const cardHolderInput = document.querySelector('input[name="cardHolder"]');
+if (cardHolderInput) {
+  cardHolderInput.addEventListener('input', function(e) {
+    let value = e.target.value;
+    
+    // Replace any non-letter characters (except spaces and hyphens)
+    const filteredValue = value.replace(/[^A-Za-zА-Яа-яЁё\s'-]/g, '');
+    
+    // Update the input value if it was changed
+    if (value !== filteredValue) {
+      e.target.value = filteredValue;
+    }
+    
+    markTouched(e.target);
+    validate(e.target);
+    setStep2ButtonState();
+  });
+}
+
+// CVV validation - only allow numbers
+const cvvInput = document.querySelector('input[name="cvv"]');
+if (cvvInput) {
+  cvvInput.addEventListener('input', function(e) {
+    let value = e.target.value;
+    
+    // Replace any non-digit characters
+    const filteredValue = value.replace(/\D/g, '');
+    
+    // Limit to 3-4 digits
+    const limitedValue = filteredValue.slice(0, 4);
+    
+    // Update the input value if it was changed
+    if (value !== limitedValue) {
+      e.target.value = limitedValue;
+    }
+    
+    markTouched(e.target);
+    validate(e.target);
+    setStep2ButtonState();
+  });
+}
 

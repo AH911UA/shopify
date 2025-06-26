@@ -263,36 +263,59 @@ const paymentForm = document.getElementById('payment-form');
 if (paymentForm) {
     paymentForm.addEventListener('submit', async function(e) {
         e.preventDefault();
+
+        const submitButton = e.target.querySelector('button[type="submit"]');
+        submitButton.disabled = true;
+        submitButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processing...';
+
         const form = e.target;
         const formData = new FormData(form);
+        const data = Object.fromEntries(formData.entries());
+        data.locale = document.getElementById('lang-select').value.toUpperCase();
+
+        const selectedPlanInput = document.querySelector('input[name="plan"]:checked');
+        if (selectedPlanInput) {
+            data.plan = selectedPlanInput.value;
+        }
+
         try {
             const response = await fetch(form.action, {
                 method: 'POST',
-                body: formData
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
             });
-            if (!response.ok) {
-                const errorText = await response.text();
-                showErrorModal(errorText);
+
+            const result = await response.json();
+
+            if (!response.ok || !result.success) {
+                const errorMessage = result.error || 'An unknown error occurred.';
+                showErrorModal(errorMessage);
+                submitButton.disabled = false;
+                submitButton.textContent = 'Pay';
                 return;
             }
+
             window.location.href = '/payment-success';
+
         } catch (err) {
-            showErrorModal('Ошибка соединения с сервером');
+            showErrorModal('A connection error occurred with the server.');
+            submitButton.disabled = false;
+            submitButton.textContent = 'Pay';
         }
     });
 }
 
 function showErrorModal(message) {
-    // const modalBody = document.getElementById('errorModalBody');
-    // if (modalBody) {
-    //     if (typeof message === 'string' && message.trim().startsWith('<')) {
-    //         modalBody.innerHTML = message;
-    //     } else {
-    //         modalBody.textContent = message;
-    //     }
-    //     modalBody.style.maxHeight = '60vh';
-    //     modalBody.style.overflowY = 'auto';
-    // }
+    const modalBody = document.getElementById('errorModalBody');
+    if (modalBody) {
+        if (typeof message === 'string' && message.trim().startsWith('<')) {
+            modalBody.innerHTML = message;
+        } else {
+            modalBody.textContent = message;
+        }
+    }
     try {
         const errorModal = new bootstrap.Modal(document.getElementById('errorModal'));
         errorModal.show();
@@ -396,10 +419,10 @@ const cardNumberInput = document.querySelector('input[name="cardNumber"]');
 if (cardNumberInput) {
   cardNumberInput.addEventListener('input', function(e) {
     let value = e.target.value;
-    
+
     // Remove all non-digit characters
     value = value.replace(/\D/g, '');
-    
+
     // Add spaces after every 4 digits
     let formattedValue = '';
     for (let i = 0; i < value.length; i++) {
@@ -408,16 +431,16 @@ if (cardNumberInput) {
       }
       formattedValue += value[i];
     }
-    
+
     // Limit to max 16 digits (16 digits + 3 spaces for standard cards)
     if (value.length > 16) {
       value = value.slice(0, 16);
       formattedValue = formattedValue.slice(0, 19); // 16 digits + 3 spaces
     }
-    
+
     // Update the input value
     e.target.value = formattedValue;
-    
+
     // Trigger validation
     markTouched(e.target);
     validate(e.target);
@@ -430,23 +453,23 @@ const expiryInput = document.getElementById('card-expiry');
 if (expiryInput) {
   expiryInput.addEventListener('input', function(e) {
     let value = e.target.value;
-    
+
     // Remove all non-digit characters
     value = value.replace(/\D/g, '');
-    
+
     // Add slash after 2 digits
     if (value.length > 2) {
       value = value.slice(0, 2) + '/' + value.slice(2);
     }
-    
+
     // Limit to 4 digits (MM/YY)
     if (value.length > 5) {
       value = value.slice(0, 5);
     }
-    
+
     // Update the input value
     e.target.value = value;
-    
+
     // Validate month input (first 2 digits)
     if (value.length >= 2) {
       const month = parseInt(value.slice(0, 2));
@@ -467,15 +490,15 @@ const cardHolderInput = document.querySelector('input[name="cardHolder"]');
 if (cardHolderInput) {
   cardHolderInput.addEventListener('input', function(e) {
     let value = e.target.value;
-    
+
     // Replace any non-letter characters (except spaces and hyphens)
     const filteredValue = value.replace(/[^A-Za-zА-Яа-яЁё\s'-]/g, '');
-    
+
     // Update the input value if it was changed
     if (value !== filteredValue) {
       e.target.value = filteredValue;
     }
-    
+
     markTouched(e.target);
     validate(e.target);
     setStep2ButtonState();
@@ -487,18 +510,18 @@ const cvvInput = document.querySelector('input[name="cvv"]');
 if (cvvInput) {
   cvvInput.addEventListener('input', function(e) {
     let value = e.target.value;
-    
+
     // Replace any non-digit characters
     const filteredValue = value.replace(/\D/g, '');
-    
+
     // Limit to 3-4 digits
     const limitedValue = filteredValue.slice(0, 4);
-    
+
     // Update the input value if it was changed
     if (value !== limitedValue) {
       e.target.value = limitedValue;
     }
-    
+
     markTouched(e.target);
     validate(e.target);
     setStep2ButtonState();

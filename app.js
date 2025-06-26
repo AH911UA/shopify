@@ -7,7 +7,6 @@ const express = require('express');
 const helmet = require('helmet');
 const multer = require('multer');
 const router = require("./router");
-const botRouter = require("./router/bot");
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -48,7 +47,6 @@ app.use((req, res, next) => {
 });
 
 app.use(router);
-app.use('/bot', botRouter);
 
 app.listen(port, () => {
     console.log(`Example app listening on http://${host}:${port}`)

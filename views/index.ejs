@@ -292,8 +292,9 @@
                                     </div>
                                 </div>
                                 <div class="w-100">
-                                    <input type="submit" value="<%= __('pay') %>"
-                                           class="border-0 fs-5 w-100 btn btn-success text-uppercase mt-3" id="card-btn-submit" disabled>
+                                    <button type="submit" class="border-0 fs-5 w-100 btn btn-success text-uppercase mt-3" id="card-btn-submit" disabled>
+                                        <%= __('pay') %>
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -586,7 +587,7 @@
         <h5 class="modal-title" id="errorModalLabel"><%= __('error_payment') %></h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
-      <!-- <div class="modal-body" id="errorModalBody" style="max-height: 60vh; overflow-y: auto;"></div> -->
+      <div class="modal-body" id="errorModalBody" style="max-height: 60vh; overflow-y: auto;"></div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><%= __('close') %></button>
       </div>

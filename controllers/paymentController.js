@@ -11,7 +11,7 @@ const baseUrl = 'https://api.iyzipay.com';
 
 const PLAN_REFERENCE_CODES = {
   solo: 'decef24c-4ee5-4407-94bf-6c64b096660f',
-  plus: '438fb589-63da-411c-9802-09f8bdc0a8ae',
+  plus: '60c70d55-edec-4d45-89f4-67d322f98834',
   premium: 'fd5fc9cb-06f7-4079-92c7-5d25adc0f6b4'
 };
 

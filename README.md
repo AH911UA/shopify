@@ -17,4 +17,4 @@ s - product name
 fb - pixel id
 bid - pixel id
 i - product image
-plan - solo | plus | premium 
+plan - solo | plus | premium | test

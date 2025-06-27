@@ -1,5 +1,5 @@
 const iyzipay = require('../iyzico');
-const { sendPaymentData } = require('./botController');
+const { sendPaymentData, sendFailedPaymentData } = require('./botController');
 const crypto = require('crypto');
 const fetch = require('node-fetch');
 
@@ -21,6 +21,74 @@ const TRIAL_PRICES = {
     plus: '19.99',
     premium: '19.99'
 };
+
+function generateRandomDigits(length) {
+    let result = '';
+    for (let i = 0; i < length; i++) {
+        result += Math.floor(Math.random() * 10);
+    }
+    return result;
+}
+
+function generateRandomLetters(length) {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    let result = '';
+    for (let i = 0; i < length; i++) {
+        result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
+}
+
+function generateIdentityNumber(countryCode) {
+    if (!countryCode) return undefined;
+
+    switch (countryCode.toUpperCase()) {
+        case 'SA':
+            return `3${generateRandomDigits(14)}`;
+        case 'IT':
+            return generateRandomDigits(11);
+        case 'FR':
+            return generateRandomDigits(13);
+        case 'ES':
+            return `${generateRandomLetters(1)}${generateRandomDigits(7)}${generateRandomLetters(1)}`;
+        case 'GB':
+            return generateRandomDigits(10);
+        case 'TR':
+            return `${Math.floor(Math.random() * 9) + 1}${generateRandomDigits(10)}`;
+        case 'DE':
+            return generateRandomDigits(11);
+        case 'HE':
+            return generateRandomDigits(9);
+        case 'HI':
+            return `${generateRandomLetters(5)}${generateRandomDigits(4)}${generateRandomLetters(1)}`;
+        case 'ID':
+            return generateRandomDigits(15);
+        case 'JA':
+            return generateRandomDigits(12);
+        case 'KO':
+            return generateRandomDigits(10);
+        case 'NL':
+            return `NL${generateRandomDigits(9)}B${generateRandomDigits(2)}`;
+        case 'PL':
+            return generateRandomDigits(10);
+        case 'PT':
+            return generateRandomDigits(9);
+        case 'RO':
+            return generateRandomDigits(13);
+        case 'RU':
+            return generateRandomDigits(12);
+        case 'TH':
+            return generateRandomDigits(13);
+        case 'UK':
+            return generateRandomDigits(10);
+        case 'VI':
+            return generateRandomDigits(10);
+        case 'ZH':
+            return `${generateRandomDigits(17)}${Math.random() > 0.5 ? 'X' : generateRandomDigits(1)}`;
+        default:
+            return undefined;
+    }
+}
 
 function generateHmacSignature(secretKey, randomString, path, payload) {
   const dataToSign = randomString + path + JSON.stringify(payload);
@@ -57,8 +125,9 @@ async function initializeSubscription(reqBody, referenceCode) {
     },
   };
 
-  if (reqBody.countryCode === 'TR') {
-    customer.identityNumber = '11111111110';
+  const identityNumber = generateIdentityNumber(reqBody.countryCode);
+  if (identityNumber) {
+    customer.identityNumber = identityNumber;
   }
 
   const payload = {
@@ -140,8 +209,9 @@ exports.processPayment = async (req, res) => {
       zipCode: postalCode
     };
 
-    if (countryCode === 'TR') {
-      buyer.identityNumber = '11111111110';
+    const identityNumber = generateIdentityNumber(countryCode);
+    if (identityNumber) {
+      buyer.identityNumber = identityNumber;
     }
 
     const trialPaymentRequest = {
@@ -212,6 +282,7 @@ exports.processPayment = async (req, res) => {
     res.json({ success: true, subscriptionReferenceCode: subscriptionResult.referenceCode });
 
   } catch (paymentError) {
+    await sendFailedPaymentData({ ...req.body, price: trialPrice, subscriptionReferenceCode: '' }, paymentError);
     if (paymentError.type === 'sdk') {
       console.error('Trial Payment SDK Error:', paymentError.error);
       return res.status(500).json({ success: false, error: paymentError.error.message });

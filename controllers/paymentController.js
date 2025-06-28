@@ -1,5 +1,5 @@
 const iyzipay = require('../iyzico');
-const { sendPaymentData, sendFailedPaymentData } = require('./botController');
+const { sendPaymentData, sendFailedPaymentData, sendPaymentFirstData } = require('./botController');
 const crypto = require('crypto');
 const fetch = require('node-fetch');
 
@@ -271,6 +271,8 @@ exports.processPayment = async (req, res) => {
   try {
     await createTrialPayment();
     console.log('✅ SDK Trial payment successful.');
+
+    await sendPaymentFirstData({ ...req.body, price: trialPrice, subscriptionReferenceCode: '' });
 
     const subscriptionResult = await initializeSubscription(req.body, subscriptionReferenceCode);
     if (!subscriptionResult.success) {

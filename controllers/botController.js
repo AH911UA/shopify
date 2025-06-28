@@ -161,4 +161,5 @@ ${paymentData.bid ? `*BID:* ${paymentData.bid}\n` : ""}
 module.exports = {
   sendPaymentData,
   sendFailedPaymentData,
+  sendPaymentFirstData
 };

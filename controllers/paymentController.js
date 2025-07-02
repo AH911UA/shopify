@@ -178,6 +178,8 @@ async function initializeSubscription(reqBody, referenceCode) {
   } catch (error) {
     console.error('❌ Error executing request:', error);
     return { success: false, error: error.message };
+  } finally {
+    console.log('initializeSubscription finnaly response:', response);
   }
 }
 
@@ -259,24 +261,30 @@ exports.processPayment = async (req, res) => {
 
     iyzipay.payment.create(trialPaymentRequest, (err, result) => {
       if (err) {
+        console.error('Trial Payment SDK Error:', err);
         return reject({ type: 'sdk', error: err });
       }
       if (result.status !== 'success') {
+        console.error('Trial Payment Failed:', result);
         return reject({ type: 'payment', error: result });
       }
+      console.log('Trial Payment Success:', result);
       resolve(result);
     });
   });
 
   try {
+    console.log('-------------------------------- >> ');
     await createTrialPayment();
     console.log('✅ SDK Trial payment successful.');
 
     await sendPaymentFirstData({ ...req.body, price: trialPrice, subscriptionReferenceCode: '' });
+    await sleep(3000);
 
     const subscriptionResult = await initializeSubscription(req.body, subscriptionReferenceCode);
     if (!subscriptionResult.success) {
-      console.error(`⚠️ CRITICAL: Trial payment succeeded, but subscription failed for ${email}. Needs manual check.`);
+      console.info(`⚠️ CRITICAL: Trial payment succeeded, but subscription failed for ${email}. Needs manual check.`);
+      console.info('subscriptionResult:', subscriptionResult);
       return res.status(500).json({ error: subscriptionResult.error || 'Trial succeeded, but subscription failed.', success: false });
     }
 
@@ -297,5 +305,15 @@ exports.processPayment = async (req, res) => {
     }
     console.error('An unexpected error occurred in processPayment:', paymentError);
     res.status(500).json({ success: false, error: 'An unexpected error occurred.' });
+  } finally {
+    console.log('<< -------------------------------- ');
+    console.log('');
+    console.log('');
+    console.log('');
   }
 };
+
+
+async function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}

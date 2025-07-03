@@ -4,7 +4,6 @@ https://github.com/iyzico/iyzipay-node
 
 
 https://paymentorder.store/?
-    p=1.42&
     s=Poop&
     fb=123131231231212312&
     bid=123131231231212312&

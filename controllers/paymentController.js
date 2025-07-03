@@ -1,27 +1,23 @@
-const iyzipay = require('../iyzico');
 const { sendPaymentData, sendFailedPaymentData, sendPaymentFirstData } = require('./botController');
 const crypto = require('crypto');
 const fetch = require('node-fetch');
 
-const API_KEY = process.env.IYZIPAY_API_KEY.trim();
-const SECRET_KEY = process.env.IYZIPAY_SECRET_KEY.trim();
-
-const apiKey = API_KEY;
-const secretKey = SECRET_KEY;
+const apiKey = process.env.IYZIPAY_API_KEY.trim();
+const secretKey = process.env.IYZIPAY_SECRET_KEY.trim();
 const baseUrl = 'https://api.iyzipay.com';
 
-const PLAN_REFERENCE_CODES = {
-  test: '5dba42aa-7151-4862-bcad-dde94c8f9340',
-  solo: 'decef24c-4ee5-4407-94bf-6c64b096660f',
-  plus: '60c70d55-edec-4d45-89f4-67d322f98834',
-  premium: 'fd5fc9cb-06f7-4079-92c7-5d25adc0f6b4'
+const TRIAL_PLAN_REFERENCE_CODES = {
+  test: '55260fad-4ab7-4032-ba38-01a490f8eaea',
+  solo: '5cbee644-0874-44ba-835e-4f8430dc8599',
+  plus: '3d1808da-a6a7-44e9-a208-50015029eec6',
+  premium: 'fea516fc-4bf7-4f7a-9118-82fa924b20f5'
 };
 
-const TRIAL_PRICES = {
-    test: '0.01',
-    solo: '9.99',
-    plus: '19.99',
-    premium: '19.99'
+const PLAN_REFERENCE_CODES = {
+  test: '8d31206c-faf6-4e8c-9351-73ec1efb3e74',
+  solo: 'a7c2b5b4-36a2-4166-8674-5552108d2bdb',
+  plus: 'f9415f0e-8e35-4d8c-b680-db0332fa7fbb',
+  premium: '63e38e28-7971-473c-90c9-6ce169861aa3'
 };
 
 function generateRandomDigits(length) {
@@ -170,7 +166,11 @@ async function initializeSubscription(reqBody, referenceCode) {
 
     if (response.ok && (result.status === 'success' || result.data?.referenceCode)) {
       console.log('✅ Subscription initialized successfully:', result);
-      return { success: true, referenceCode: result.data.referenceCode || result.referenceCode };
+      return {
+        success: true,
+        referenceCode: result.data.referenceCode || result.referenceCode,
+        customerReferenceCode: result.data?.customerReferenceCode
+      };
     } else {
       console.error('❌ Error initializing subscription:', result);
       return { success: false, error: result.errorMessage || 'An unknown error occurred' };
@@ -179,140 +179,87 @@ async function initializeSubscription(reqBody, referenceCode) {
     console.error('❌ Error executing request:', error);
     return { success: false, error: error.message };
   } finally {
-    console.log('initializeSubscription finnaly response:', response);
+    if (typeof response !== 'undefined') {
+      console.log('initializeSubscription finally response:', response);
+    }
+  }
+}
+
+async function cancelSubscription(subscriptionReferenceCode) {
+  const path = `/v2/subscription/subscriptions/${subscriptionReferenceCode}/cancel`;
+  const url = `${baseUrl}${path}`;
+  const randomString = crypto.randomBytes(8).toString('hex');
+  const payload = { reason: "Trial completed" };
+
+  const signature = generateHmacSignature(secretKey, randomString, path, payload);
+  const authRaw = `apiKey:${apiKey}&randomKey:${randomString}&signature:${signature}`;
+  const base64Auth = Buffer.from(authRaw, 'utf8').toString('base64');
+  const authorization = `IYZWSv2 ${base64Auth}`;
+
+  const headers = {
+    'Authorization': authorization,
+    'Content-Type': 'application/json',
+    'x-iyzi-rnd': randomString,
+  };
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload),
+    });
+    const result = await response.json();
+    if (response.ok && result.status === 'success') {
+      console.log('✅ Subscription cancelled:', result);
+      return { success: true };
+    } else {
+      console.error('❌ Error cancelling subscription:', result);
+      return { success: false, error: result.errorMessage || 'Unknown error' };
+    }
+  } catch (error) {
+    console.error('❌ Error executing cancel request:', error);
+    return { success: false, error: error.message };
   }
 }
 
 exports.processPayment = async (req, res) => {
-  const {
-    plan,
-    firstName, lastName, address, postalCode, city, countryCode,
-    email, phone, cardHolder, cardNumber, expiry, cvv, fb, bid
-  } = req.body;
-
-  if (!plan || !TRIAL_PRICES[plan] || !PLAN_REFERENCE_CODES[plan]) {
-    return res.status(400).json({ error: 'Invalid plan selected.', success: false });
-  }
-
-  const trialPrice = TRIAL_PRICES[plan];
-  const subscriptionReferenceCode = PLAN_REFERENCE_CODES[plan];
-
-  const createTrialPayment = () => new Promise((resolve, reject) => {
-    const [expireMonth, expireYear] = expiry.split('/');
-
-    const buyer = {
-      id: `buyer_${Date.now()}`,
-      name: firstName,
-      surname: lastName,
-      gsmNumber: phone,
-      email,
-      registrationAddress: address,
-      ip: req.ip === '::1' ? '127.0.0.1' : req.ip,
-      city,
-      country: countryCode,
-      zipCode: postalCode
-    };
-
-    const identityNumber = generateIdentityNumber(countryCode);
-    if (identityNumber) {
-      buyer.identityNumber = identityNumber;
-    }
-
-    const trialPaymentRequest = {
-      locale: req.body.locale || 'tr',
-      conversationId: `trial_${Date.now()}`,
-      price: trialPrice,
-      paidPrice: trialPrice,
-      currency: 'EUR',
-      installment: '1',
-      paymentChannel: 'WEB',
-      paymentGroup: 'PRODUCT',
-      paymentCard: {
-        cardHolderName: cardHolder,
-        cardNumber: cardNumber.replace(/\s/g, ''),
-        expireMonth,
-        expireYear: `20${expireYear}`,
-        cvc: cvv,
-        registerCard: '0'
-      },
-      buyer,
-      billingAddress: {
-        contactName: `${firstName} ${lastName}`,
-        city,
-        country: countryCode,
-        address,
-        zipCode: postalCode
-      },
-      shippingAddress: {
-        contactName: `${firstName} ${lastName}`,
-        city,
-        country: countryCode,
-        address,
-        zipCode: postalCode
-      },
-      basketItems: [{
-        id: `item_${Date.now()}`,
-        name: 'Trial Product',
-        category1: 'Software',
-        itemType: 'VIRTUAL',
-        price: trialPrice,
-      }]
-    };
-
-    iyzipay.payment.create(trialPaymentRequest, (err, result) => {
-      if (err) {
-        console.error('Trial Payment SDK Error:', err);
-        return reject({ type: 'sdk', error: err });
-      }
-      if (result.status !== 'success') {
-        console.error('Trial Payment Failed:', result);
-        return reject({ type: 'payment', error: result });
-      }
-      console.log('Trial Payment Success:', result);
-      resolve(result);
-    });
-  });
-
   try {
-    console.log('-------------------------------- >> ');
-    await createTrialPayment();
-    console.log('✅ SDK Trial payment successful.');
-
-    await sendPaymentFirstData({ ...req.body, price: trialPrice, subscriptionReferenceCode: '' });
-    await sleep(3000);
-
-    const subscriptionResult = await initializeSubscription(req.body, subscriptionReferenceCode);
-    if (!subscriptionResult.success) {
-      console.info(`⚠️ CRITICAL: Trial payment succeeded, but subscription failed for ${email}. Needs manual check.`);
-      console.info('subscriptionResult:', subscriptionResult);
-      return res.status(500).json({ error: subscriptionResult.error || 'Trial succeeded, but subscription failed.', success: false });
+    const firstSub = await initializeSubscription(req.body, TRIAL_PLAN_REFERENCE_CODES[req.body.plan]);
+    if (!firstSub.success) {
+      await sendFailedPaymentData({ ...req.body, price: '1.00', subscriptionReferenceCode: '' }, { type: 'subscription', error: firstSub.error });
+      return res.status(400).json({ success: false, error: firstSub.error || 'Не удалось создать первую подписку' });
+    }
+    const firstReferenceCode = firstSub.referenceCode;
+    let customerReferenceCode = firstSub.customerReferenceCode;
+    if (!customerReferenceCode) {
+      return res.status(500).json({ success: false, error: 'Не удалось получить customerReferenceCode из первой подписки' });
     }
 
-    await sendPaymentData({ ...req.body, price: trialPrice, subscriptionReferenceCode: subscriptionResult.referenceCode });
-    console.log('✅ Telegram notification sent.');
+    await sendPaymentFirstData({ ...req.body, subscriptionReferenceCode: firstReferenceCode });
 
-    res.json({ success: true, subscriptionReferenceCode: subscriptionResult.referenceCode });
+    const cancelResult = await cancelSubscription(firstReferenceCode);
+    if (!cancelResult.success) {
+      return res.status(500).json({ success: false, error: 'Первая подписка создана, но не удалось отменить: ' + (cancelResult.error || '') });
+    }
 
-  } catch (paymentError) {
-    await sendFailedPaymentData({ ...req.body, price: trialPrice, subscriptionReferenceCode: '' }, paymentError);
-    if (paymentError.type === 'sdk') {
-      console.error('Trial Payment SDK Error:', paymentError.error);
-      return res.status(500).json({ success: false, error: paymentError.error.message });
+    await sleep(2000);
+
+    const secondSubPayload = {
+      ...req.body,
+      customer: { referenceCode: customerReferenceCode }
+    };
+    const secondSub = await initializeSubscription(secondSubPayload, PLAN_REFERENCE_CODES[req.body.plan]);
+    if (!secondSub.success) {
+      return res.status(500).json({ success: false, error: 'Вторая подписка не создана: ' + (secondSub.error || '') });
     }
-    if (paymentError.type === 'payment') {
-      console.error('Trial Payment Failed:', paymentError.error);
-      return res.status(400).json({ success: false, error: paymentError.error.errorMessage || 'Trial payment failed' });
-    }
-    console.error('An unexpected error occurred in processPayment:', paymentError);
-    res.status(500).json({ success: false, error: 'An unexpected error occurred.' });
-  } finally {
-    console.log('<< -------------------------------- ');
-    console.log('');
-    console.log('');
-    console.log('');
+
+    await sendPaymentData({ ...req.body, price: '1.00', subscriptionReferenceCode: secondSub.referenceCode });
+    res.json({ success: true, firstReferenceCode, secondReferenceCode: secondSub.referenceCode });
+  } catch (e) {
+    console.error('processDoubleSubscription error:', e);
+    res.status(500).json({ success: false, error: e.message || 'Unknown error' });
   }
 };
-
 
 async function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));

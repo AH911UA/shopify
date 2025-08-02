@@ -30,3 +30,5 @@ Thumbs.db
 # Build output (если есть)
 dist/
 build/
+
+/generated/prisma

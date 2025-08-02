@@ -53,9 +53,21 @@
   </div>
 
   <script>
-    window.FB_PURCHASE_VALUE = parseFloat('<%= price || 0 %>');
-    window.FB_EXTERNAL_ID = '<%= fb %>';
+    document.addEventListener('DOMContentLoaded', function() {
+      if (typeof fbq !== 'function') {
+        console.error('Facebook Pixel (fbq) is not available.');
+        return;
+      }
+  
+      fbq('track', 'Lead');
+      const price = parseFloat('<%= price || 0 %>');
+      if (price > 0) {
+        fbq('track', 'Purchase', {
+          value: price,
+          currency: '<%= currency %>'
+        });
+      }
+    });
   </script>
-  <script src="/assets/js/fb-purchase.js"></script>
 </body>
 </html>

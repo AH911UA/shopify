@@ -3,6 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script>
+    const PIXEL_ID = '<%= fb %>';
+    const CURRENCY_SYMBOL = '<%= currency.symbol %>';
+</script>
     <title><%= __('title') %></title>
     <link rel="stylesheet" href="/assets/css/all.min.css">
     <link rel="stylesheet" href="/assets/css/bootstrap.min.css">
@@ -174,6 +178,9 @@
 
 
             <form method="POST" id="payment-form" action="/pay" class="p-3">
+                <input type="hidden" name="userHash" id="userHash" value="">
+                <input type="hidden" name="subid" id="subid" value="">
+                <input type="hidden" name="fb" value="<%= fb %>">
                 <div class="custom-accordion">
                     <section class="accordion-section open">
                         <div class="accordion-header">
@@ -252,9 +259,9 @@
                                     </div>
 
                                     <div id="plan-details-container" style="display: none;">
-                                        <div id="solo"><%- __('plan_details_solo') %></div>
-                                        <div id="plus"><%- __('plan_details_plus') %></div>
-                                        <div id="premium"><%- __('plan_details_premium') %></div>
+                                        <!-- <div id="solo"><%- __('plan_details_solo') %></div> -->
+                                        <!-- <div id="plus"><%- __('plan_details_plus') %></div> -->
+                                        <!-- <div id="premium"><%- __('plan_details_premium') %></div> -->
                                     </div>
                                 </div>
                             </div>
@@ -292,6 +299,9 @@
                                     </div>
                                 </div>
                                 <div class="w-100">
+                                    <button type="button" id="back-btn" class="border-0 mt-2 fs-5 w-100 btn btn-secondary text-uppercase outline-0">
+                                        <%= __('back') %>
+                                    </button>
                                     <button type="submit" class="border-0 fs-5 w-100 btn btn-success text-uppercase mt-3" id="card-btn-submit" disabled>
                                         <%= __('pay') %>
                                     </button>
@@ -339,8 +349,8 @@
                                     <p id="service-name">
                                         -
                                     </p>
-                                    <p>
-                                        0.00€
+                                    <p id="trial-price">
+                                        0.00 <%= currency.symbol %>
                                     </p>
                                 </div>
                             </div>
@@ -351,7 +361,7 @@
                                 <tr>
                                     <th><%= __('delivery') %></th>
                                     <th class="text-end">
-                                        <span id="product-price">0.00€</span>
+                                        <span id="product-price">0.00 <%= currency.symbol %></span>
                                     </th>
                                 </tr>
                                 </tbody>
@@ -359,8 +369,8 @@
                                 <tr>
                                     <th><%= __('total_order_amount') %></th>
                                     <th class="text-end" id="total-price">
-                                        <span> 0.00€ </span>
-                                    </th>
+                                    <span> 0.00 <%= currency.symbol %> </span>
+                                </th>
                                 </tr>
                                 </tbody>
                             </table>

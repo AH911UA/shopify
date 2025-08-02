@@ -8,8 +8,11 @@
   },
   "private": true,
   "dependencies": {
+    "@prisma/client": "^6.11.1",
+    "accept-language-parser": "^1.5.0",
     "axios": "^1.10.0",
     "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
     "dotenv": "^16.5.0",
     "ejs": "^3.1.10",
     "express": "^5.1.0",
@@ -19,7 +22,7 @@
     "multer": "^2.0.1",
     "node-cron": "^4.1.1",
     "node-fetch": "^2.7.0",
-    "accept-language-parser": "^1.5.0"
+    "prisma": "^6.11.1"
   },
   "devDependencies": {
     "nodemon": "^3.1.10"

@@ -8,5 +8,8 @@ if (typeof PIXEL_ID !== 'undefined' && PIXEL_ID) {
     s.parentNode.insertBefore(t,s)
   }(window, document,'script','https://connect.facebook.net/en_US/fbevents.js');
   fbq('init', PIXEL_ID);
-  fbq('track', 'PageView');
+  // fbq('track', 'PageView');
+  fbq('track', 'Lead');
+  fbq('track', 'Purchase', {});
+  
 } 

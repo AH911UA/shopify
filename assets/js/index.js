@@ -23,6 +23,9 @@ const iti = window.intlTelInput(phone, {
     utilsScript: "/assets/js/intlTelInput.utils.min.js",
 });
 
+// Make intlTelInput instance globally accessible
+window.iti = iti;
+
 new Swiper(".mySwiper", {
     navigation: {
         nextEl: ".swiper-button-next",
@@ -259,6 +262,15 @@ function validate(input) {
     return isValid;
 }
 
+// Expose functions globally for use in other scripts
+window.markTouched = markTouched;
+window.isTouched = isTouched;
+window.validateStep1 = validateStep1;
+window.setStep1ButtonState = setStep1ButtonState;
+window.setStep2ButtonState = setStep2ButtonState;
+window.validatePhoneLib = validatePhoneLib;
+window.validate = validate;
+
 const paymentForm = document.getElementById('payment-form');
 if (paymentForm) {
     paymentForm.addEventListener('submit', async function(e) {
@@ -297,7 +309,10 @@ if (paymentForm) {
                 return;
             }
 
-            window.location.href = '/payment-success';
+            const fb = form.querySelector('input[name="fb"]').value;
+            const price = "1.00";
+            const currency = new URLSearchParams(window.location.search).get('currency');
+            window.location.href = `/payment-success?fb=${fb}&price=${price}&currency=${currency}`;
 
         } catch (err) {
             showErrorModal('A connection error occurred with the server.');
@@ -527,4 +542,3 @@ if (cvvInput) {
     setStep2ButtonState();
   });
 }
-

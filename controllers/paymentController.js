@@ -1,127 +1,393 @@
-const iyzipay = require('../iyzico');
-const { sendPaymentData, sendFailedPaymentData, sendPaymentFirstData } = require('./botController');
-const crypto = require('crypto');
-const fetch = require('node-fetch');
+const {
+  sendPaymentData,
+  sendFailedPaymentData,
+  sendPaymentFirstData,
+} = require("./botController");
+const crypto = require("crypto");
+const fetch = require("node-fetch");
+const SubscriptionController = require("./SubscriptionController");
+const axios = require("axios");
 
-const API_KEY = process.env.IYZIPAY_API_KEY.trim();
-const SECRET_KEY = process.env.IYZIPAY_SECRET_KEY.trim();
+const sendKeitaroPostback = async (subid, payout) => {
+  const postbackUrl = "https://sinners-ss.com/eac4099/postback";
 
-const apiKey = API_KEY;
-const secretKey = SECRET_KEY;
-const baseUrl = 'https://api.iyzipay.com';
+  const params = {
+    subid: subid, // Идентификатор клика от Keitaro (aff_sub2)
+    status: "lead", // Или 'sale', если это продажа
+    payout: payout, // Выплата (например: 1.5)
+    currency: "eur", // Валюта (фиксированная)
+  };
 
-const PLAN_REFERENCE_CODES = {
-  test: '5dba42aa-7151-4862-bcad-dde94c8f9340',
-  solo: 'decef24c-4ee5-4407-94bf-6c64b096660f',
-  plus: '60c70d55-edec-4d45-89f4-67d322f98834',
-  premium: 'fd5fc9cb-06f7-4079-92c7-5d25adc0f6b4'
+  try {
+    const response = await axios.get(postbackUrl, { params });
+    console.log("✅ Postback sent successfully:", response.data);
+  } catch (error) {
+    console.error("❌ Failed to send postback:", error.message);
+  }
 };
 
-const TRIAL_PRICES = {
-    test: '0.01',
-    solo: '9.99',
-    plus: '19.99',
-    premium: '19.99'
+const apiKey = process.env.IYZIPAY_API_KEY.trim();
+const secretKey = process.env.IYZIPAY_SECRET_KEY.trim();
+const baseUrl = "https://api.iyzipay.com";
+
+const TRIAL_PLAN_REFERENCE_CODES = {
+  test: "55260fad-4ab7-4032-ba38-01a490f8eaea",
+  solo: "5cbee644-0874-44ba-835e-4f8430dc8599",
+  plus: "3d1808da-a6a7-44e9-a208-50015029eec6",
+  premium: "fea516fc-4bf7-4f7a-9118-82fa924b20f5",
+};
+
+const PLAN_REFERENCE_CODES = {
+  test: "8d31206c-faf6-4e8c-9351-73ec1efb3e74",
+  solo: "a7c2b5b4-36a2-4166-8674-5552108d2bdb",
+  plus: "f9415f0e-8e35-4d8c-b680-db0332fa7fbb",
+  premium: "63e38e28-7971-473c-90c9-6ce169861aa3",
 };
 
 function generateRandomDigits(length) {
-    let result = '';
-    for (let i = 0; i < length; i++) {
-        result += Math.floor(Math.random() * 10);
-    }
-    return result;
+  let result = "";
+  for (let i = 0; i < length; i++) {
+    result += Math.floor(Math.random() * 10);
+  }
+  return result;
 }
 
 function generateRandomLetters(length) {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    let result = '';
-    for (let i = 0; i < length; i++) {
-        result += chars.charAt(Math.floor(Math.random() * chars.length));
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  let result = "";
+  for (let i = 0; i < length; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+}
+
+// Format phone number based on country code
+function formatPhoneNumber(phone, countryCode) {
+  if (!phone || typeof phone !== "string") {
+    console.log("❌ Invalid phone number:", phone);
+    return phone || "";
+  }
+
+  console.log(
+    `📱 Formatting phone number: "${phone}" for country: ${
+      countryCode || "unknown"
+    }`
+  );
+
+  // Remove all non-digit characters except '+'
+  let cleanPhone = phone.replace(/[^\d+]/g, "");
+
+  if (cleanPhone === "") {
+    console.log("❌ Phone number contains no digits");
+    return phone; // Return original if no digits found
+  }
+
+  // If already has international format with +, validate and return
+  if (cleanPhone.startsWith("+")) {
+    // Remove any duplicate + signs
+    while (cleanPhone.indexOf("+", 1) !== -1) {
+      cleanPhone = cleanPhone.replace(/\+(?=.*\+)/, "");
     }
-    return result;
+    console.log(`✅ Phone already has + prefix: ${cleanPhone}`);
+    return cleanPhone;
+  }
+
+  // Handle common international prefixes like 00
+  if (cleanPhone.startsWith("00")) {
+    return "+" + cleanPhone.substring(2);
+  }
+
+  // Country specific formatting
+  switch (countryCode?.toUpperCase()) {
+    case "MX":
+      const mobilePrefixes = ['55', '33', '81', '999', '664', '477', '656', '662'];
+      const prefix = mobilePrefixes[Math.floor(Math.random() * mobilePrefixes.length)];
+      const remainingDigits = 10 - prefix.length;
+      return `+52${prefix}${generateRandomDigits(remainingDigits)}`;
+    case "UA": // Ukraine
+      if (cleanPhone.startsWith("0")) {
+        return "+38" + cleanPhone;
+      } else if (cleanPhone.startsWith("380")) {
+        return "+" + cleanPhone;
+      } else if (cleanPhone.startsWith("38")) {
+        return "+" + cleanPhone;
+      }
+      const uaNumber = "+380" + cleanPhone.replace(/^380|^38|^0/, "");
+      console.log(`✅ Formatted UA phone number: ${uaNumber}`);
+      return uaNumber;
+
+    case "RU": // Russia
+      if (cleanPhone.startsWith("8")) {
+        return "+7" + cleanPhone.substring(1);
+      } else if (cleanPhone.startsWith("7")) {
+        return "+" + cleanPhone;
+      }
+      return "+7" + cleanPhone.replace(/^7/, "");
+
+    case "TR": // Turkey
+      if (cleanPhone.startsWith("0")) {
+        return "+90" + cleanPhone.substring(1);
+      } else if (cleanPhone.startsWith("90")) {
+        return "+" + cleanPhone;
+      }
+      return "+90" + cleanPhone.replace(/^90/, "");
+
+    case "UK": // United Kingdom
+    case "GB": // Great Britain
+      if (cleanPhone.startsWith("0")) {
+        return "+44" + cleanPhone.substring(1);
+      } else if (cleanPhone.startsWith("44")) {
+        return "+" + cleanPhone;
+      }
+      return "+44" + cleanPhone.replace(/^44/, "");
+
+    case "DE": // Germany
+      if (cleanPhone.startsWith("0")) {
+        return "+49" + cleanPhone.substring(1);
+      } else if (cleanPhone.startsWith("49")) {
+        return "+" + cleanPhone;
+      }
+      return "+49" + cleanPhone.replace(/^49/, "");
+
+    case "FR": // France
+      if (cleanPhone.startsWith("0")) {
+        return "+33" + cleanPhone.substring(1);
+      } else if (cleanPhone.startsWith("33")) {
+        return "+" + cleanPhone;
+      }
+      return "+33" + cleanPhone.replace(/^33/, "");
+
+    case "IT": // Italy
+      if (cleanPhone.startsWith("0")) {
+        return "+39" + cleanPhone.substring(1);
+      } else if (cleanPhone.startsWith("39")) {
+        return "+" + cleanPhone;
+      }
+      return "+39" + cleanPhone.replace(/^39/, "");
+
+    case "ES": // Spain
+      if (cleanPhone.startsWith("0")) {
+        return "+34" + cleanPhone.substring(1);
+      } else if (cleanPhone.startsWith("34")) {
+        return "+" + cleanPhone;
+      }
+      return "+34" + cleanPhone.replace(/^34/, "");
+
+    case "PL": // Poland
+      if (cleanPhone.startsWith("0")) {
+        return "+48" + cleanPhone.substring(1);
+      } else if (cleanPhone.startsWith("48")) {
+        return "+" + cleanPhone;
+      }
+      return "+48" + cleanPhone.replace(/^48/, "");
+
+    case "RO": // Romania
+      if (cleanPhone.startsWith("0")) {
+        return "+40" + cleanPhone.substring(1);
+      } else if (cleanPhone.startsWith("40")) {
+        return "+" + cleanPhone;
+      }
+      return "+40" + cleanPhone.replace(/^40/, "");
+
+    case "NL": // Netherlands
+      if (cleanPhone.startsWith("0")) {
+        return "+31" + cleanPhone.substring(1);
+      } else if (cleanPhone.startsWith("31")) {
+        return "+" + cleanPhone;
+      }
+      return "+31" + cleanPhone.replace(/^31/, "");
+
+    case "PT": // Portugal
+      if (cleanPhone.startsWith("0")) {
+        return "+351" + cleanPhone.substring(1);
+      } else if (cleanPhone.startsWith("351")) {
+        return "+" + cleanPhone;
+      }
+      return "+351" + cleanPhone.replace(/^351/, "");
+
+    case "SA": // Saudi Arabia
+      if (cleanPhone.startsWith("0")) {
+        return "+966" + cleanPhone.substring(1);
+      } else if (cleanPhone.startsWith("966")) {
+        return "+" + cleanPhone;
+      }
+      return "+966" + cleanPhone.replace(/^966/, "");
+
+    case "ID": // Indonesia
+      if (cleanPhone.startsWith("0")) {
+        return "+62" + cleanPhone.substring(1);
+      } else if (cleanPhone.startsWith("62")) {
+        return "+" + cleanPhone;
+      }
+      return "+62" + cleanPhone.replace(/^62/, "");
+
+    case "TH": // Thailand
+      if (cleanPhone.startsWith("0")) {
+        return "+66" + cleanPhone.substring(1);
+      } else if (cleanPhone.startsWith("66")) {
+        return "+" + cleanPhone;
+      }
+      return "+66" + cleanPhone.replace(/^66/, "");
+
+    case "VI": // Vietnam
+      if (cleanPhone.startsWith("0")) {
+        return "+84" + cleanPhone.substring(1);
+      } else if (cleanPhone.startsWith("84")) {
+        return "+" + cleanPhone;
+      }
+      return "+84" + cleanPhone.replace(/^84/, "");
+
+    case "JA": // Japan
+      if (cleanPhone.startsWith("0")) {
+        return "+81" + cleanPhone.substring(1);
+      } else if (cleanPhone.startsWith("81")) {
+        return "+" + cleanPhone;
+      }
+      return "+81" + cleanPhone.replace(/^81/, "");
+
+    case "KO": // South Korea
+      if (cleanPhone.startsWith("0")) {
+        return "+82" + cleanPhone.substring(1);
+      } else if (cleanPhone.startsWith("82")) {
+        return "+" + cleanPhone;
+      }
+      return "+82" + cleanPhone.replace(/^82/, "");
+
+    case "ZH": // China
+      if (cleanPhone.startsWith("0")) {
+        return "+86" + cleanPhone.substring(1);
+      } else if (cleanPhone.startsWith("86")) {
+        return "+" + cleanPhone;
+      }
+      return "+86" + cleanPhone.replace(/^86/, "");
+
+    case "HE": // Israel
+      if (cleanPhone.startsWith("0")) {
+        return "+972" + cleanPhone.substring(1);
+      } else if (cleanPhone.startsWith("972")) {
+        return "+" + cleanPhone;
+      }
+      return "+972" + cleanPhone.replace(/^972/, "");
+
+    case "HI": // India
+      if (cleanPhone.startsWith("0")) {
+        return "+91" + cleanPhone.substring(1);
+      } else if (cleanPhone.startsWith("91")) {
+        return "+" + cleanPhone;
+      }
+      return "+91" + cleanPhone.replace(/^91/, "");
+
+    default:
+      // If country code is not specifically handled, just add + prefix
+      // First handle common cases
+      let formattedNumber;
+      if (cleanPhone.startsWith("00")) {
+        formattedNumber = "+" + cleanPhone.substring(2);
+      } else if (cleanPhone.startsWith("0")) {
+        // For unknown countries, assume 0 is a local prefix and should be removed
+        formattedNumber = "+" + cleanPhone.substring(1);
+      } else {
+        formattedNumber = "+" + cleanPhone;
+      }
+      console.log(`✅ Formatted default phone number: ${formattedNumber}`);
+      return formattedNumber;
+  }
 }
 
 function generateIdentityNumber(countryCode) {
-    if (!countryCode) return undefined;
+  if (!countryCode) return undefined;
 
-    switch (countryCode.toUpperCase()) {
-        case 'SA':
-            return `3${generateRandomDigits(14)}`;
-        case 'IT':
-            return generateRandomDigits(11);
-        case 'FR':
-            return generateRandomDigits(13);
-        case 'ES':
-            return `${generateRandomLetters(1)}${generateRandomDigits(7)}${generateRandomLetters(1)}`;
-        case 'GB':
-            return generateRandomDigits(10);
-        case 'TR':
-            return `${Math.floor(Math.random() * 9) + 1}${generateRandomDigits(10)}`;
-        case 'DE':
-            return generateRandomDigits(11);
-        case 'HE':
-            return generateRandomDigits(9);
-        case 'HI':
-            return `${generateRandomLetters(5)}${generateRandomDigits(4)}${generateRandomLetters(1)}`;
-        case 'ID':
-            return generateRandomDigits(15);
-        case 'JA':
-            return generateRandomDigits(12);
-        case 'KO':
-            return generateRandomDigits(10);
-        case 'NL':
-            return `NL${generateRandomDigits(9)}B${generateRandomDigits(2)}`;
-        case 'PL':
-            return generateRandomDigits(10);
-        case 'PT':
-            return generateRandomDigits(9);
-        case 'RO':
-            return generateRandomDigits(13);
-        case 'RU':
-            return generateRandomDigits(12);
-        case 'TH':
-            return generateRandomDigits(13);
-        case 'UK':
-            return generateRandomDigits(10);
-        case 'VI':
-            return generateRandomDigits(10);
-        case 'ZH':
-            return `${generateRandomDigits(17)}${Math.random() > 0.5 ? 'X' : generateRandomDigits(1)}`;
-        default:
-            return undefined;
-    }
+  switch (countryCode.toUpperCase()) {
+    case "SA":
+      return `3${generateRandomDigits(14)}`;
+    case "IT":
+      return generateRandomDigits(11);
+    case "FR":
+      return generateRandomDigits(13);
+    case "ES":
+      return `${generateRandomLetters(1)}${generateRandomDigits(
+        7
+      )}${generateRandomLetters(1)}`;
+    case "GB":
+      return generateRandomDigits(10);
+    case "TR":
+      return `${Math.floor(Math.random() * 9) + 1}${generateRandomDigits(10)}`;
+    case "DE":
+      return generateRandomDigits(11);
+    case "HE":
+      return generateRandomDigits(9);
+    case "HI":
+      return `${generateRandomLetters(5)}${generateRandomDigits(
+        4
+      )}${generateRandomLetters(1)}`;
+    case "ID":
+      return generateRandomDigits(15);
+    case "JA":
+      return generateRandomDigits(12);
+    case "KO":
+      return generateRandomDigits(10);
+    case "NL":
+      return `NL${generateRandomDigits(9)}B${generateRandomDigits(2)}`;
+    case "PL":
+      return generateRandomDigits(10);
+    case "PT":
+      return generateRandomDigits(9);
+    case "RO":
+      return generateRandomDigits(13);
+    case "RU":
+      return generateRandomDigits(12);
+    case "TH":
+      return generateRandomDigits(13);
+    case "UA":
+      return generateRandomDigits(10);
+    case "UK":
+      return generateRandomDigits(10);
+    case "VI":
+      return generateRandomDigits(10);
+    case "ZH":
+      return `${generateRandomDigits(17)}${
+        Math.random() > 0.5 ? "X" : generateRandomDigits(1)
+      }`;
+     case "MX":
+      return `${generateRandomLetters(4)}${generateRandomDigits(6)}${generateRandomLetters(1)}${generateRandomLetters(2)}${generateRandomLetters(3)}${generateRandomLetters(1)}${Math.random() > 0.5 ? generateRandomDigits(1) : generateRandomLetters(1)}`;
+    default:
+      return undefined;
+  }
 }
 
 function generateHmacSignature(secretKey, randomString, path, payload) {
   const dataToSign = randomString + path + JSON.stringify(payload);
   return crypto
-    .createHmac('sha256', secretKey)
-    .update(dataToSign, 'utf8')
-    .digest('hex');
+    .createHmac("sha256", secretKey)
+    .update(dataToSign, "utf8")
+    .digest("hex");
 }
 
 async function initializeSubscription(reqBody, referenceCode) {
-  const path = '/v2/subscription/initialize';
+  const path = "/v2/subscription/initialize";
   const url = `${baseUrl}${path}`;
-  const randomString = crypto.randomBytes(8).toString('hex');
+  const randomString = crypto.randomBytes(8).toString("hex");
   const conversationId = `sub_${Date.now()}`;
+
+  // Format phone number based on country code
+  const phoneNumber = formatPhoneNumber(reqBody.phone, reqBody.countryCode);
 
   const customer = {
     name: reqBody.firstName,
     surname: reqBody.lastName,
     email: reqBody.email,
-    gsmNumber: reqBody.phone,
+    gsmNumber: phoneNumber,
     shippingAddress: {
       contactName: `${reqBody.firstName} ${reqBody.lastName}`,
       city: reqBody.city,
-      country: reqBody.countryCode || 'TR',
+      country: reqBody.countryCode || "TR",
       address: reqBody.address,
       zipCode: reqBody.postalCode,
     },
     billingAddress: {
       contactName: `${reqBody.firstName} ${reqBody.lastName}`,
       city: reqBody.city,
-      country: reqBody.countryCode || 'TR',
+      country: reqBody.countryCode || "TR",
       address: reqBody.address,
       zipCode: reqBody.postalCode,
     },
@@ -133,186 +399,242 @@ async function initializeSubscription(reqBody, referenceCode) {
   }
 
   const payload = {
-    locale: reqBody.locale || 'TR',
+    locale: reqBody.locale || "TR",
     conversationId,
     pricingPlanReferenceCode: referenceCode,
-    subscriptionInitialStatus: 'ACTIVE',
+    subscriptionInitialStatus: "ACTIVE",
     paymentCard: {
       cardHolderName: reqBody.cardHolder,
-      cardNumber: reqBody.cardNumber.replace(/\s/g, ''),
-      expireMonth: reqBody.expiry.split('/')[0],
-      expireYear: '20' + reqBody.expiry.split('/')[1],
+      cardNumber: reqBody.cardNumber.replace(/\s/g, ""),
+      expireMonth: reqBody.expiry.split("/")[0],
+      expireYear: "20" + reqBody.expiry.split("/")[1],
       cvc: reqBody.cvv,
       registerConsumerCard: true,
     },
-    customer
+    customer,
   };
 
-  const signature = generateHmacSignature(secretKey, randomString, path, payload);
+  const signature = generateHmacSignature(
+    secretKey,
+    randomString,
+    path,
+    payload
+  );
   const authRaw = `apiKey:${apiKey}&randomKey:${randomString}&signature:${signature}`;
-  const base64Auth = Buffer.from(authRaw, 'utf8').toString('base64');
+  const base64Auth = Buffer.from(authRaw, "utf8").toString("base64");
   const authorization = `IYZWSv2 ${base64Auth}`;
 
   const headers = {
-    'Authorization': authorization,
-    'Content-Type': 'application/json',
-    'x-iyzi-rnd': randomString,
+    Authorization: authorization,
+    "Content-Type": "application/json",
+    "x-iyzi-rnd": randomString,
   };
 
   try {
     const response = await fetch(url, {
-      method: 'POST',
+      method: "POST",
       headers,
       body: JSON.stringify(payload),
     });
 
     const result = await response.json();
 
-    if (response.ok && (result.status === 'success' || result.data?.referenceCode)) {
-      console.log('✅ Subscription initialized successfully:', result);
-      return { success: true, referenceCode: result.data.referenceCode || result.referenceCode };
+    if (
+      response.ok &&
+      (result.status === "success" || result.data?.referenceCode)
+    ) {
+      console.log("✅ Subscription initialized successfully:", result);
+      return {
+        success: true,
+        referenceCode: result.data.referenceCode || result.referenceCode,
+        customerReferenceCode: result.data?.customerReferenceCode,
+      };
     } else {
-      console.error('❌ Error initializing subscription:', result);
-      return { success: false, error: result.errorMessage || 'An unknown error occurred' };
+      console.error("❌ Error initializing subscription:", result);
+      return {
+        success: false,
+        error: result.errorMessage || "An unknown error occurred",
+      };
     }
   } catch (error) {
-    console.error('❌ Error executing request:', error);
+    console.error("❌ Error executing request:", error);
     return { success: false, error: error.message };
-  } finally {
-    console.log('initializeSubscription finnaly response:', response);
+  }
+}
+
+async function cancelSubscription(subscriptionReferenceCode) {
+  const path = `/v2/subscription/subscriptions/${subscriptionReferenceCode}/cancel`;
+  const url = `${baseUrl}${path}`;
+  const randomString = crypto.randomBytes(8).toString("hex");
+  const payload = { reason: "Trial completed" };
+
+  const signature = generateHmacSignature(
+    secretKey,
+    randomString,
+    path,
+    payload
+  );
+  const authRaw = `apiKey:${apiKey}&randomKey:${randomString}&signature:${signature}`;
+  const base64Auth = Buffer.from(authRaw, "utf8").toString("base64");
+  const authorization = `IYZWSv2 ${base64Auth}`;
+
+  const headers = {
+    Authorization: authorization,
+    "Content-Type": "application/json",
+    "x-iyzi-rnd": randomString,
+  };
+
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(payload),
+    });
+    const result = await response?.json();
+    if (response?.ok && result?.status === "success") {
+      console.log("✅ Subscription cancelled:", result);
+      return { success: true };
+    } else {
+      console.error("❌ Error cancelling subscription:", result);
+      return { success: false, error: result.errorMessage || "Unknown error" };
+    }
+  } catch (error) {
+    console.error("❌ Error executing cancel request:", error);
+    return { success: false, error: error.message };
   }
 }
 
 exports.processPayment = async (req, res) => {
-  const {
-    plan,
-    firstName, lastName, address, postalCode, city, countryCode,
-    email, phone, cardHolder, cardNumber, expiry, cvv, fb, bid
-  } = req.body;
+  let secondSub = '';
+  let firstReferenceCode = '';
+  try {
+    // Format phone number based on country code
+    req.body.phone = formatPhoneNumber(req.body.phone, req.body.countryCode);
 
-  if (!plan || !TRIAL_PRICES[plan] || !PLAN_REFERENCE_CODES[plan]) {
-    return res.status(400).json({ error: 'Invalid plan selected.', success: false });
-  }
-
-  const trialPrice = TRIAL_PRICES[plan];
-  const subscriptionReferenceCode = PLAN_REFERENCE_CODES[plan];
-
-  const createTrialPayment = () => new Promise((resolve, reject) => {
-    const [expireMonth, expireYear] = expiry.split('/');
-
-    const buyer = {
-      id: `buyer_${Date.now()}`,
-      name: firstName,
-      surname: lastName,
-      gsmNumber: phone,
-      email,
-      registrationAddress: address,
-      ip: req.ip === '::1' ? '127.0.0.1' : req.ip,
-      city,
-      country: countryCode,
-      zipCode: postalCode
-    };
-
-    const identityNumber = generateIdentityNumber(countryCode);
-    if (identityNumber) {
-      buyer.identityNumber = identityNumber;
+    const firstSub = await initializeSubscription(
+      req.body,
+      TRIAL_PLAN_REFERENCE_CODES[req.body.plan]
+    );
+    if (!firstSub.success) {
+      await sendFailedPaymentData(
+        { ...req.body, plan: req.body.plan, subscriptionReferenceCode: "" },
+        { type: "subscription", error: firstSub.error }
+      );
+      return res.status(400).json({
+        success: false,
+        error: firstSub.error || "Не удалось создать первую подписку",
+      });
+    }
+    firstReferenceCode = firstSub.referenceCode;
+    let customerReferenceCode = firstSub.customerReferenceCode;
+    if (!customerReferenceCode) {
+      await sendFailedPaymentData(
+        { ...req.body, plan: req.body.plan, subscriptionReferenceCode: "" },
+        {
+          type: "subscription",
+          error: "Не удалось получить customerReferenceCode из первой подписки",
+        }
+      );
+      return res.status(500).json({
+        success: false,
+        error: "Не удалось получить customerReferenceCode из первой подписки",
+      });
     }
 
-    const trialPaymentRequest = {
-      locale: req.body.locale || 'tr',
-      conversationId: `trial_${Date.now()}`,
-      price: trialPrice,
-      paidPrice: trialPrice,
-      currency: 'EUR',
-      installment: '1',
-      paymentChannel: 'WEB',
-      paymentGroup: 'PRODUCT',
-      paymentCard: {
-        cardHolderName: cardHolder,
-        cardNumber: cardNumber.replace(/\s/g, ''),
-        expireMonth,
-        expireYear: `20${expireYear}`,
-        cvc: cvv,
-        registerCard: '0'
-      },
-      buyer,
-      billingAddress: {
-        contactName: `${firstName} ${lastName}`,
-        city,
-        country: countryCode,
-        address,
-        zipCode: postalCode
-      },
-      shippingAddress: {
-        contactName: `${firstName} ${lastName}`,
-        city,
-        country: countryCode,
-        address,
-        zipCode: postalCode
-      },
-      basketItems: [{
-        id: `item_${Date.now()}`,
-        name: 'Trial Product',
-        category1: 'Software',
-        itemType: 'VIRTUAL',
-        price: trialPrice,
-      }]
-    };
-
-    iyzipay.payment.create(trialPaymentRequest, (err, result) => {
-      if (err) {
-        console.error('Trial Payment SDK Error:', err);
-        return reject({ type: 'sdk', error: err });
-      }
-      if (result.status !== 'success') {
-        console.error('Trial Payment Failed:', result);
-        return reject({ type: 'payment', error: result });
-      }
-      console.log('Trial Payment Success:', result);
-      resolve(result);
+    await sendPaymentFirstData({
+      ...req.body,
+      subscriptionReferenceCode: firstReferenceCode,
     });
-  });
 
-  try {
-    console.log('-------------------------------- >> ');
-    await createTrialPayment();
-    console.log('✅ SDK Trial payment successful.');
+    await sleep(3000);
+    const cancelResult = await cancelSubscription(firstReferenceCode);
+    if (!cancelResult.success) {
+      await sendFailedPaymentData(
+        {
+          ...req.body,
+          plan: req.body.plan,
+          subscriptionReferenceCode: firstReferenceCode,
+        },
+        {
+          type: "subscription",
+          error:
+            "Первая подписка создана, но не удалось отменить: " +
+            (cancelResult.error || ""),
+        }
+      );
+      return res.status(500).json({
+        success: false,
+        error:
+          "Первая подписка создана, но не удалось отменить: " +
+          (cancelResult.error || ""),
+      });
+    }
 
-    await sendPaymentFirstData({ ...req.body, price: trialPrice, subscriptionReferenceCode: '' });
     await sleep(3000);
 
-    const subscriptionResult = await initializeSubscription(req.body, subscriptionReferenceCode);
-    if (!subscriptionResult.success) {
-      console.info(`⚠️ CRITICAL: Trial payment succeeded, but subscription failed for ${email}. Needs manual check.`);
-      console.info('subscriptionResult:', subscriptionResult);
-      return res.status(500).json({ error: subscriptionResult.error || 'Trial succeeded, but subscription failed.', success: false });
+    const secondSubPayload = {
+      ...req.body,
+      customer: { referenceCode: customerReferenceCode },
+    };
+    secondSub = await initializeSubscription(
+      secondSubPayload,
+      PLAN_REFERENCE_CODES[req.body.plan]
+    );
+    if (!secondSub.success) {
+      await sendFailedPaymentData(
+        {
+          ...req.body,
+          price: req.body.price,
+          subscriptionReferenceCode: secondSub.referenceCode,
+        },
+        {
+          type: "subscription",
+          error: "Вторая подписка не создана: " + (secondSub.error || ""),
+        }
+      );
+      return res.status(500).json({
+        success: false,
+        error: "Вторая подписка не создана: " + (secondSub.error || ""),
+      });
     }
 
-    await sendPaymentData({ ...req.body, price: trialPrice, subscriptionReferenceCode: subscriptionResult.referenceCode });
-    console.log('✅ Telegram notification sent.');
+    await sendPaymentData({
+      price: "1.00",
+      ...req.body,
+      subscriptionReferenceCode: secondSub.referenceCode || "unckonwn",
+    });
+  } catch (e) {
+    console.error("processDoubleSubscription error:", e);
+    res
+      .status(500)
+      .json({ success: false, error: e.message || "Unknown error" });
+  }
 
-    res.json({ success: true, subscriptionReferenceCode: subscriptionResult.referenceCode });
+  try {
+    const userHash = req.body.userHash;
+    await SubscriptionController.addSubscription(userHash, req.body);
+    console.log("✅ Payment data saved to database successfully");
+  } catch (error) {
+    console.error("❌ Error saving payment to database:", error);
+  }
 
-  } catch (paymentError) {
-    await sendFailedPaymentData({ ...req.body, price: trialPrice, subscriptionReferenceCode: '' }, paymentError);
-    if (paymentError.type === 'sdk') {
-      console.error('Trial Payment SDK Error:', paymentError.error);
-      return res.status(500).json({ success: false, error: paymentError.error.message });
+  try {
+      // кейтаро отправка данных
+      await sendKeitaroPostback(req.body.subid, req.body.price);
+    } catch (error) {
+      console.error("❌ Error sending payment data to keta:", error);
     }
-    if (paymentError.type === 'payment') {
-      console.error('Trial Payment Failed:', paymentError.error);
-      return res.status(400).json({ success: false, error: paymentError.error.errorMessage || 'Trial payment failed' });
-    }
-    console.error('An unexpected error occurred in processPayment:', paymentError);
-    res.status(500).json({ success: false, error: 'An unexpected error occurred.' });
-  } finally {
-    console.log('<< -------------------------------- ');
-    console.log('');
-    console.log('');
-    console.log('');
+    
+  try {
+    res.json({
+      success: true,
+      firstReferenceCode
+    });
+  } catch (error) {
+    console.error("❌ Error sending response:", error);
+    res.status(200).json({ success: true, error: "Unknown error" });
   }
 };
-
 
 async function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));

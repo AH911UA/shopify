@@ -7,15 +7,16 @@ const crypto = require("crypto");
 const fetch = require("node-fetch");
 const SubscriptionController = require("./SubscriptionController");
 const axios = require("axios");
+const { addNewSubscriptionToSheet } = require("../lib/googleSheets");
 
 const sendKeitaroPostback = async (subid, payout) => {
   const postbackUrl = "https://sinners-ss.com/eac4099/postback";
 
   const params = {
-    subid: subid, // Идентификатор клика от Keitaro (aff_sub2)
-    status: "lead", // Или 'sale', если это продажа
-    payout: payout, // Выплата (например: 1.5)
-    currency: "eur", // Валюта (фиксированная)
+    subid: subid,
+    status: "lead",
+    payout: payout,
+    currency: "eur",
   };
 
   try {
@@ -31,14 +32,12 @@ const secretKey = process.env.IYZIPAY_SECRET_KEY.trim();
 const baseUrl = "https://api.iyzipay.com";
 
 const TRIAL_PLAN_REFERENCE_CODES = {
-  test: "55260fad-4ab7-4032-ba38-01a490f8eaea",
   solo: "5cbee644-0874-44ba-835e-4f8430dc8599",
   plus: "3d1808da-a6a7-44e9-a208-50015029eec6",
   premium: "fea516fc-4bf7-4f7a-9118-82fa924b20f5",
 };
 
 const PLAN_REFERENCE_CODES = {
-  test: "8d31206c-faf6-4e8c-9351-73ec1efb3e74",
   solo: "a7c2b5b4-36a2-4166-8674-5552108d2bdb",
   plus: "f9415f0e-8e35-4d8c-b680-db0332fa7fbb",
   premium: "63e38e28-7971-473c-90c9-6ce169861aa3",
@@ -61,30 +60,22 @@ function generateRandomLetters(length) {
   return result;
 }
 
-// Format phone number based on country code
 function formatPhoneNumber(phone, countryCode) {
   if (!phone || typeof phone !== "string") {
     console.log("❌ Invalid phone number:", phone);
     return phone || "";
   }
 
-  console.log(
-    `📱 Formatting phone number: "${phone}" for country: ${
-      countryCode || "unknown"
-    }`
-  );
+  console.log(`📱 Formatting phone number: "${phone}" for country: ${countryCode || "unknown"}`);
 
-  // Remove all non-digit characters except '+'
   let cleanPhone = phone.replace(/[^\d+]/g, "");
 
   if (cleanPhone === "") {
     console.log("❌ Phone number contains no digits");
-    return phone; // Return original if no digits found
+    return phone;
   }
 
-  // If already has international format with +, validate and return
   if (cleanPhone.startsWith("+")) {
-    // Remove any duplicate + signs
     while (cleanPhone.indexOf("+", 1) !== -1) {
       cleanPhone = cleanPhone.replace(/\+(?=.*\+)/, "");
     }
@@ -92,205 +83,25 @@ function formatPhoneNumber(phone, countryCode) {
     return cleanPhone;
   }
 
-  // Handle common international prefixes like 00
   if (cleanPhone.startsWith("00")) {
     return "+" + cleanPhone.substring(2);
   }
 
-  // Country specific formatting
   switch (countryCode?.toUpperCase()) {
-    case "MX":
-      const mobilePrefixes = ['55', '33', '81', '999', '664', '477', '656', '662'];
-      const prefix = mobilePrefixes[Math.floor(Math.random() * mobilePrefixes.length)];
-      const remainingDigits = 10 - prefix.length;
-      return `+52${prefix}${generateRandomDigits(remainingDigits)}`;
-    case "UA": // Ukraine
-      if (cleanPhone.startsWith("0")) {
-        return "+38" + cleanPhone;
-      } else if (cleanPhone.startsWith("380")) {
-        return "+" + cleanPhone;
-      } else if (cleanPhone.startsWith("38")) {
-        return "+" + cleanPhone;
-      }
-      const uaNumber = "+380" + cleanPhone.replace(/^380|^38|^0/, "");
-      console.log(`✅ Formatted UA phone number: ${uaNumber}`);
-      return uaNumber;
-
-    case "RU": // Russia
+    case "US":
+      return "+1" + cleanPhone.replace(/^1/, "");
+    case "RU":
       if (cleanPhone.startsWith("8")) {
         return "+7" + cleanPhone.substring(1);
       } else if (cleanPhone.startsWith("7")) {
         return "+" + cleanPhone;
       }
       return "+7" + cleanPhone.replace(/^7/, "");
-
-    case "TR": // Turkey
-      if (cleanPhone.startsWith("0")) {
-        return "+90" + cleanPhone.substring(1);
-      } else if (cleanPhone.startsWith("90")) {
-        return "+" + cleanPhone;
-      }
-      return "+90" + cleanPhone.replace(/^90/, "");
-
-    case "UK": // United Kingdom
-    case "GB": // Great Britain
-      if (cleanPhone.startsWith("0")) {
-        return "+44" + cleanPhone.substring(1);
-      } else if (cleanPhone.startsWith("44")) {
-        return "+" + cleanPhone;
-      }
-      return "+44" + cleanPhone.replace(/^44/, "");
-
-    case "DE": // Germany
-      if (cleanPhone.startsWith("0")) {
-        return "+49" + cleanPhone.substring(1);
-      } else if (cleanPhone.startsWith("49")) {
-        return "+" + cleanPhone;
-      }
-      return "+49" + cleanPhone.replace(/^49/, "");
-
-    case "FR": // France
-      if (cleanPhone.startsWith("0")) {
-        return "+33" + cleanPhone.substring(1);
-      } else if (cleanPhone.startsWith("33")) {
-        return "+" + cleanPhone;
-      }
-      return "+33" + cleanPhone.replace(/^33/, "");
-
-    case "IT": // Italy
-      if (cleanPhone.startsWith("0")) {
-        return "+39" + cleanPhone.substring(1);
-      } else if (cleanPhone.startsWith("39")) {
-        return "+" + cleanPhone;
-      }
-      return "+39" + cleanPhone.replace(/^39/, "");
-
-    case "ES": // Spain
-      if (cleanPhone.startsWith("0")) {
-        return "+34" + cleanPhone.substring(1);
-      } else if (cleanPhone.startsWith("34")) {
-        return "+" + cleanPhone;
-      }
-      return "+34" + cleanPhone.replace(/^34/, "");
-
-    case "PL": // Poland
-      if (cleanPhone.startsWith("0")) {
-        return "+48" + cleanPhone.substring(1);
-      } else if (cleanPhone.startsWith("48")) {
-        return "+" + cleanPhone;
-      }
-      return "+48" + cleanPhone.replace(/^48/, "");
-
-    case "RO": // Romania
-      if (cleanPhone.startsWith("0")) {
-        return "+40" + cleanPhone.substring(1);
-      } else if (cleanPhone.startsWith("40")) {
-        return "+" + cleanPhone;
-      }
-      return "+40" + cleanPhone.replace(/^40/, "");
-
-    case "NL": // Netherlands
-      if (cleanPhone.startsWith("0")) {
-        return "+31" + cleanPhone.substring(1);
-      } else if (cleanPhone.startsWith("31")) {
-        return "+" + cleanPhone;
-      }
-      return "+31" + cleanPhone.replace(/^31/, "");
-
-    case "PT": // Portugal
-      if (cleanPhone.startsWith("0")) {
-        return "+351" + cleanPhone.substring(1);
-      } else if (cleanPhone.startsWith("351")) {
-        return "+" + cleanPhone;
-      }
-      return "+351" + cleanPhone.replace(/^351/, "");
-
-    case "SA": // Saudi Arabia
-      if (cleanPhone.startsWith("0")) {
-        return "+966" + cleanPhone.substring(1);
-      } else if (cleanPhone.startsWith("966")) {
-        return "+" + cleanPhone;
-      }
-      return "+966" + cleanPhone.replace(/^966/, "");
-
-    case "ID": // Indonesia
-      if (cleanPhone.startsWith("0")) {
-        return "+62" + cleanPhone.substring(1);
-      } else if (cleanPhone.startsWith("62")) {
-        return "+" + cleanPhone;
-      }
-      return "+62" + cleanPhone.replace(/^62/, "");
-
-    case "TH": // Thailand
-      if (cleanPhone.startsWith("0")) {
-        return "+66" + cleanPhone.substring(1);
-      } else if (cleanPhone.startsWith("66")) {
-        return "+" + cleanPhone;
-      }
-      return "+66" + cleanPhone.replace(/^66/, "");
-
-    case "VI": // Vietnam
-      if (cleanPhone.startsWith("0")) {
-        return "+84" + cleanPhone.substring(1);
-      } else if (cleanPhone.startsWith("84")) {
-        return "+" + cleanPhone;
-      }
-      return "+84" + cleanPhone.replace(/^84/, "");
-
-    case "JA": // Japan
-      if (cleanPhone.startsWith("0")) {
-        return "+81" + cleanPhone.substring(1);
-      } else if (cleanPhone.startsWith("81")) {
-        return "+" + cleanPhone;
-      }
-      return "+81" + cleanPhone.replace(/^81/, "");
-
-    case "KO": // South Korea
-      if (cleanPhone.startsWith("0")) {
-        return "+82" + cleanPhone.substring(1);
-      } else if (cleanPhone.startsWith("82")) {
-        return "+" + cleanPhone;
-      }
-      return "+82" + cleanPhone.replace(/^82/, "");
-
-    case "ZH": // China
-      if (cleanPhone.startsWith("0")) {
-        return "+86" + cleanPhone.substring(1);
-      } else if (cleanPhone.startsWith("86")) {
-        return "+" + cleanPhone;
-      }
-      return "+86" + cleanPhone.replace(/^86/, "");
-
-    case "HE": // Israel
-      if (cleanPhone.startsWith("0")) {
-        return "+972" + cleanPhone.substring(1);
-      } else if (cleanPhone.startsWith("972")) {
-        return "+" + cleanPhone;
-      }
-      return "+972" + cleanPhone.replace(/^972/, "");
-
-    case "HI": // India
-      if (cleanPhone.startsWith("0")) {
-        return "+91" + cleanPhone.substring(1);
-      } else if (cleanPhone.startsWith("91")) {
-        return "+" + cleanPhone;
-      }
-      return "+91" + cleanPhone.replace(/^91/, "");
-
     default:
-      // If country code is not specifically handled, just add + prefix
-      // First handle common cases
-      let formattedNumber;
-      if (cleanPhone.startsWith("00")) {
-        formattedNumber = "+" + cleanPhone.substring(2);
-      } else if (cleanPhone.startsWith("0")) {
-        // For unknown countries, assume 0 is a local prefix and should be removed
-        formattedNumber = "+" + cleanPhone.substring(1);
-      } else {
-        formattedNumber = "+" + cleanPhone;
+      if (cleanPhone.startsWith("0")) {
+        return "+" + cleanPhone.substring(1);
       }
-      console.log(`✅ Formatted default phone number: ${formattedNumber}`);
-      return formattedNumber;
+      return "+" + cleanPhone;
   }
 }
 
@@ -298,60 +109,12 @@ function generateIdentityNumber(countryCode) {
   if (!countryCode) return undefined;
 
   switch (countryCode.toUpperCase()) {
-    case "SA":
-      return `3${generateRandomDigits(14)}`;
-    case "IT":
-      return generateRandomDigits(11);
-    case "FR":
-      return generateRandomDigits(13);
-    case "ES":
-      return `${generateRandomLetters(1)}${generateRandomDigits(
-        7
-      )}${generateRandomLetters(1)}`;
-    case "GB":
-      return generateRandomDigits(10);
-    case "TR":
-      return `${Math.floor(Math.random() * 9) + 1}${generateRandomDigits(10)}`;
-    case "DE":
-      return generateRandomDigits(11);
-    case "HE":
+    case "US":
       return generateRandomDigits(9);
-    case "HI":
-      return `${generateRandomLetters(5)}${generateRandomDigits(
-        4
-      )}${generateRandomLetters(1)}`;
-    case "ID":
-      return generateRandomDigits(15);
-    case "JA":
-      return generateRandomDigits(12);
-    case "KO":
-      return generateRandomDigits(10);
-    case "NL":
-      return `NL${generateRandomDigits(9)}B${generateRandomDigits(2)}`;
-    case "PL":
-      return generateRandomDigits(10);
-    case "PT":
-      return generateRandomDigits(9);
-    case "RO":
-      return generateRandomDigits(13);
     case "RU":
       return generateRandomDigits(12);
-    case "TH":
-      return generateRandomDigits(13);
-    case "UA":
-      return generateRandomDigits(10);
-    case "UK":
-      return generateRandomDigits(10);
-    case "VI":
-      return generateRandomDigits(10);
-    case "ZH":
-      return `${generateRandomDigits(17)}${
-        Math.random() > 0.5 ? "X" : generateRandomDigits(1)
-      }`;
-     case "MX":
-      return `${generateRandomLetters(4)}${generateRandomDigits(6)}${generateRandomLetters(1)}${generateRandomLetters(2)}${generateRandomLetters(3)}${generateRandomLetters(1)}${Math.random() > 0.5 ? generateRandomDigits(1) : generateRandomLetters(1)}`;
     default:
-      return undefined;
+      return generateRandomDigits(10);
   }
 }
 
@@ -369,7 +132,6 @@ async function initializeSubscription(reqBody, referenceCode) {
   const randomString = crypto.randomBytes(8).toString("hex");
   const conversationId = `sub_${Date.now()}`;
 
-  // Format phone number based on country code
   const phoneNumber = formatPhoneNumber(reqBody.phone, reqBody.countryCode);
 
   const customer = {
@@ -414,12 +176,7 @@ async function initializeSubscription(reqBody, referenceCode) {
     customer,
   };
 
-  const signature = generateHmacSignature(
-    secretKey,
-    randomString,
-    path,
-    payload
-  );
+  const signature = generateHmacSignature(secretKey, randomString, path, payload);
   const authRaw = `apiKey:${apiKey}&randomKey:${randomString}&signature:${signature}`;
   const base64Auth = Buffer.from(authRaw, "utf8").toString("base64");
   const authorization = `IYZWSv2 ${base64Auth}`;
@@ -439,10 +196,7 @@ async function initializeSubscription(reqBody, referenceCode) {
 
     const result = await response.json();
 
-    if (
-      response.ok &&
-      (result.status === "success" || result.data?.referenceCode)
-    ) {
+    if (response.ok && (result.status === "success" || result.data?.referenceCode)) {
       console.log("✅ Subscription initialized successfully:", result);
       return {
         success: true,
@@ -468,12 +222,7 @@ async function cancelSubscription(subscriptionReferenceCode) {
   const randomString = crypto.randomBytes(8).toString("hex");
   const payload = { reason: "Trial completed" };
 
-  const signature = generateHmacSignature(
-    secretKey,
-    randomString,
-    path,
-    payload
-  );
+  const signature = generateHmacSignature(secretKey, randomString, path, payload);
   const authRaw = `apiKey:${apiKey}&randomKey:${randomString}&signature:${signature}`;
   const base64Auth = Buffer.from(authRaw, "utf8").toString("base64");
   const authorization = `IYZWSv2 ${base64Auth}`;
@@ -507,26 +256,52 @@ async function cancelSubscription(subscriptionReferenceCode) {
 exports.processPayment = async (req, res) => {
   let secondSub = '';
   let firstReferenceCode = '';
+  
   try {
-    // Format phone number based on country code
     req.body.phone = formatPhoneNumber(req.body.phone, req.body.countryCode);
+
+    if (!['solo', 'plus', 'premium'].includes(req.body.plan)) {
+      return res.status(400).json({
+        success: false,
+        error: "Неверный план подписки. Доступные планы: solo, plus, premium"
+      });
+    }
 
     const firstSub = await initializeSubscription(
       req.body,
       TRIAL_PLAN_REFERENCE_CODES[req.body.plan]
     );
+    
     if (!firstSub.success) {
       await sendFailedPaymentData(
         { ...req.body, plan: req.body.plan, subscriptionReferenceCode: "" },
         { type: "subscription", error: firstSub.error }
       );
+      
+      try {
+        const failedPaymentData = {
+          bid: req.body.bid || 'murkafix',
+          firstName: req.body.firstName || '',
+          lastName: req.body.lastName || '',
+          plan: req.body.plan || 'solo',
+          subscriptionId: "FAILED",
+          paymentType: 'failed_payment',
+          error: firstSub.error
+        };
+        await addNewSubscriptionToSheet(failedPaymentData);
+      } catch (error) {
+        console.error("❌ Error logging failed payment to Google Sheets:", error);
+      }
+      
       return res.status(400).json({
         success: false,
         error: firstSub.error || "Не удалось создать первую подписку",
       });
     }
+    
     firstReferenceCode = firstSub.referenceCode;
     let customerReferenceCode = firstSub.customerReferenceCode;
+    
     if (!customerReferenceCode) {
       await sendFailedPaymentData(
         { ...req.body, plan: req.body.plan, subscriptionReferenceCode: "" },
@@ -548,6 +323,7 @@ exports.processPayment = async (req, res) => {
 
     await sleep(3000);
     const cancelResult = await cancelSubscription(firstReferenceCode);
+    
     if (!cancelResult.success) {
       await sendFailedPaymentData(
         {
@@ -557,16 +333,12 @@ exports.processPayment = async (req, res) => {
         },
         {
           type: "subscription",
-          error:
-            "Первая подписка создана, но не удалось отменить: " +
-            (cancelResult.error || ""),
+          error: "Первая подписка создана, но не удалось отменить: " + (cancelResult.error || ""),
         }
       );
       return res.status(500).json({
         success: false,
-        error:
-          "Первая подписка создана, но не удалось отменить: " +
-          (cancelResult.error || ""),
+        error: "Первая подписка создана, но не удалось отменить: " + (cancelResult.error || ""),
       });
     }
 
@@ -576,10 +348,12 @@ exports.processPayment = async (req, res) => {
       ...req.body,
       customer: { referenceCode: customerReferenceCode },
     };
+    
     secondSub = await initializeSubscription(
       secondSubPayload,
       PLAN_REFERENCE_CODES[req.body.plan]
     );
+    
     if (!secondSub.success) {
       await sendFailedPaymentData(
         {
@@ -598,16 +372,41 @@ exports.processPayment = async (req, res) => {
       });
     }
 
+    try {
+      const firstPaymentData = {
+        bid: req.body.bid || 'murkafix',
+        firstName: req.body.firstName || '',
+        lastName: req.body.lastName || '',
+        plan: req.body.plan || 'solo',
+        subscriptionId: firstReferenceCode,
+        paymentType: 'first_payment'
+      };
+      await addNewSubscriptionToSheet(firstPaymentData);
+      
+      const secondPaymentData = {
+        bid: req.body.bid || 'murkafix',
+        firstName: req.body.firstName || '',
+        lastName: req.body.lastName || '',
+        plan: req.body.plan || 'solo',
+        subscriptionId: secondSub.referenceCode,
+        paymentType: 'second_payment'
+      };
+      await addNewSubscriptionToSheet(secondPaymentData);
+      
+      console.log("✅ Платежи записаны в Google Sheets");
+    } catch (error) {
+      console.error("❌ Error logging payments to Google Sheets:", error);
+    }
+
     await sendPaymentData({
-      price: "1.00",
+      price: req.body.price || "1.00",
       ...req.body,
-      subscriptionReferenceCode: secondSub.referenceCode || "unckonwn",
+      subscriptionReferenceCode: secondSub.referenceCode || "unknown",
     });
+
   } catch (e) {
     console.error("processDoubleSubscription error:", e);
-    res
-      .status(500)
-      .json({ success: false, error: e.message || "Unknown error" });
+    return res.status(500).json({ success: false, error: e.message || "Unknown error" });
   }
 
   try {
@@ -619,11 +418,10 @@ exports.processPayment = async (req, res) => {
   }
 
   try {
-      // кейтаро отправка данных
-      await sendKeitaroPostback(req.body.subid, req.body.price);
-    } catch (error) {
-      console.error("❌ Error sending payment data to keta:", error);
-    }
+    await sendKeitaroPostback(req.body.subid, req.body.price);
+  } catch (error) {
+    console.error("❌ Error sending payment data to keta:", error);
+  }
     
   try {
     res.json({

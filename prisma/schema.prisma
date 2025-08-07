@@ -32,4 +32,16 @@ model Payment {
   bid         String?
   userHash    String?
   locale      String?
+  
+  // Subscription fields
+  subscriptionReferenceCode String?
+  isFirstPayment           Boolean @default(false)
+  isSecondPayment          Boolean @default(false)
+  customerReferenceCode    String?
+  firstReferenceCode       String?
+  
+  // Recurring payment fields
+  isRecurringPayment       Boolean @default(false)
+  recurringPaymentDate     DateTime?
+  nextRecurringDate       DateTime?
 }

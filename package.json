@@ -4,7 +4,8 @@
   "description": "",
   "main": "app.js",
   "scripts": {
-    "dev": "nodemon app.js"
+    "dev": "nodemon app.js",
+    "bot": "node bot.js"
   },
   "private": true,
   "dependencies": {
@@ -16,12 +17,17 @@
     "dotenv": "^16.5.0",
     "ejs": "^3.1.10",
     "express": "^5.1.0",
+    "google-auth-library": "^9.15.1",
+    "google-spreadsheet": "^4.1.1",
+    "googleapis": "^128.0.0",
     "helmet": "^8.1.0",
     "i18n": "^0.15.1",
     "iyzipay": "^2.0.64",
+    "moment-timezone": "^0.5.48",
     "multer": "^2.0.1",
     "node-cron": "^4.1.1",
     "node-fetch": "^2.7.0",
+    "node-telegram-bot-api": "^0.66.0",
     "prisma": "^6.11.1"
   },
   "devDependencies": {

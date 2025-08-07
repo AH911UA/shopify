@@ -3,6 +3,7 @@ const MainController = require("../controllers/MainController");
 const paymentController = require("../controllers/paymentController");
 const webhookController = require("../controllers/webhookController");
 const SubscriptionController = require("../controllers/SubscriptionController");
+const { syncAllPaymentsToSheets, googleSheetsManager } = require("../lib/googleSheets");
 
 // Middleware для агрессивного отключения CORS
 const noCors = (req, res, next) => {
@@ -23,6 +24,40 @@ router.use(noCors);
 
 router.get("/", MainController.index);
 router.post("/pay", paymentController.processPayment);
+
+// Маршруты для синхронизации с Google Sheets
+router.get("/sync", (req, res) => {
+  res.render("sync");
+});
+
+router.post("/api/sync/sheets", async (req, res) => {
+  try {
+    const result = await syncAllPaymentsToSheets();
+    res.json(result);
+  } catch (error) {
+    console.error('❌ Ошибка синхронизации:', error);
+    res.json({ success: false, error: error.message });
+  }
+});
+
+router.get("/api/sync/status", async (req, res) => {
+  try {
+    const googleSheets = await googleSheetsManager.initialize();
+    const database = true; // Предполагаем, что БД работает
+    
+    res.json({
+      googleSheets: googleSheets,
+      database: database
+    });
+  } catch (error) {
+    console.error('❌ Ошибка проверки статуса:', error);
+    res.json({
+      googleSheets: false,
+      database: false,
+      error: error.message
+    });
+  }
+});
 
 // Обработчик OPTIONS запросов для всех маршрутов
 router.options(/.*/, (req, res) => {

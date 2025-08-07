@@ -23,6 +23,9 @@ class SubscriptionController {
           bid: body?.bid,
           userHash: userHash,
           locale: body?.locale,
+          isRecurringPayment: body?.isRecurring || false,
+          recurringPaymentDate: body?.isRecurring ? new Date() : null,
+          nextRecurringDate: body?.isRecurring ? null : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // +7 дней
         }
       });
       

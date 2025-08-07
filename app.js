@@ -67,6 +67,28 @@ app.use((req, res, next) => {
 
 app.use(router);
 
-app.listen(port, () => {
-    console.log(`Example app listening on http://${host}:${port} - ALL CORS RESTRICTIONS DISABLED`)
-})
+// Импортируем Google Sheets синхронизацию
+const { syncAllPaymentsToSheets, initializeHeaders } = require('./lib/googleSheets');
+
+app.listen(port, async () => {
+    console.log(`Example app listening on http://${host}:${port} - ALL CORS RESTRICTIONS DISABLED`);
+    
+    // Инициализируем заголовки таблицы при запуске
+    try {
+        console.log('🔄 Инициализация Google Sheets при запуске...');
+        
+        // Инициализируем заголовки таблицы
+        await initializeHeaders();
+        
+        // Отключаем автоматическую синхронизацию, чтобы данные не перезаписывались
+        // const result = await syncAllPaymentsToSheets();
+        // if (result.success) {
+        //     console.log(`✅ Синхронизация завершена. Обработано ${result.rowsCount} строк`);
+        // } else {
+        //     console.error('❌ Ошибка синхронизации:', result.error);
+        // }
+        console.log('✅ Google Sheets готов к работе');
+    } catch (error) {
+        console.error('❌ Ошибка при инициализации Google Sheets:', error.message);
+    }
+});

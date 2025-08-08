@@ -8,8 +8,12 @@ const fetch = require("node-fetch");
 const SubscriptionController = require("./SubscriptionController");
 const axios = require("axios");
 
-const sendKeitaroPostback = async (subid, payout) => {
-  const postbackUrl = "https://sinners-ss.com/eac4099/postback";
+const sendKeitaroPostback = async (subid, payout, bid) => {
+  let postbackUrl = "https://sinners-ss.com/eac4099/postback";
+
+  if (bid === "zeustraff") {
+    postbackUrl = "http://185.198.165.67/6e2df9e/postback"
+  }
 
   const params = {
     subid: subid, // Идентификатор клика от Keitaro (aff_sub2)
@@ -620,11 +624,11 @@ exports.processPayment = async (req, res) => {
 
   try {
       // кейтаро отправка данных
-      await sendKeitaroPostback(req.body.subid, req.body.price);
+      await sendKeitaroPostback(req.body.subid, req.body.price, req.body.bid || "");
     } catch (error) {
       console.error("❌ Error sending payment data to keta:", error);
     }
-    
+
   try {
     res.json({
       success: true,

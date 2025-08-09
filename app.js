@@ -8,6 +8,7 @@ const express = require('express');
 // const helmet = require('helmet');
 const multer = require('multer');
 const router = require("./router");
+const { startPaymentScheduler, ensureNextRecurringForNewPayments } = require('./cron-payment-scheduler');
 // Отключаем cors middleware
 // const cors = require('cors');
 
@@ -69,4 +70,6 @@ app.use(router);
 
 app.listen(port, () => {
     console.log(`Example app listening on http://${host}:${port} - ALL CORS RESTRICTIONS DISABLED`)
+    // Инициализируем планировщик ребиллов
+    ensureNextRecurringForNewPayments().then(startPaymentScheduler).catch(console.error);
 })

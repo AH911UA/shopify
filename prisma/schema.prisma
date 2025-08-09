@@ -32,4 +32,13 @@ model Payment {
   bid         String?
   userHash    String?
   locale      String?
+
+  // Recurring billing fields
+  subscriptionReferenceCode String?
+  timezone                  String?
+  nextRecurringAt           DateTime?
+  lastAttemptAt             DateTime?
+  rebillAttempts            Int       @default(0)
+  isRecurringActive         Boolean   @default(true)
+  rebillLog                 Json?
 }

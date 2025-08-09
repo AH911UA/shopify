@@ -10,12 +10,20 @@ const countryToLang = {
     'PL': 'pl', 'PT': 'pt', 'RO': 'ro', 'TR': 'tr', 'UA': 'uk',
     'RU': 'ru', 'US': 'en', 'GB': 'en', 'CN': 'zh', 'JP': 'ja',
     'KR': 'ko', 'IN': 'hi', 'SA': 'ar', 'IL': 'he', 'ID': 'id',
-    'VN': 'vi', 'TH': 'th'
+    'VN': 'vi', 'TH': 'th', 'GR': 'el'
 };
 
 class MainController {
     static async index(req, res, next) {
         try {
+            // Normalize any accidental 'gr' locale/cookie/query to 'el'
+            if (req.query.lang === 'gr') req.query.lang = 'el';
+            if (req.cookies && req.cookies.lang === 'gr') {
+                res.cookie('lang', 'el', { maxAge: 900000, httpOnly: true });
+            }
+            if (typeof req.getLocale === 'function' && req.getLocale() === 'gr') {
+                i18n.setLocale(req, 'el');
+            }
             const commentsAll = getDataFromJsonFile('comments.json');
             const currencies = getDataFromJsonFile('currencies.json');
             const availableLocales = req.app.get('locales') || i18n.getLocales();
@@ -28,6 +36,13 @@ class MainController {
             if (countryFromQuery && /^[a-zA-Z]{2,3}$/.test(countryFromQuery)) {
                 countryCode = countryFromQuery.toUpperCase();
                 console.log(`Country code from URL parameter 'f8': ${countryCode}`);
+                // Если передан f8, форсируем язык по стране вне зависимости от cookie
+                const langFromCountryImmediate = countryToLang[countryCode];
+                if (langFromCountryImmediate && availableLocales.includes(langFromCountryImmediate)) {
+                    determinedLocale = langFromCountryImmediate;
+                    res.cookie('lang', determinedLocale, { maxAge: 900000, httpOnly: true });
+                    i18n.setLocale(req, determinedLocale);
+                }
             } else {
                 // Шаг 2: Если f8 нет, определяем по GeoIP
                 const ip = (req.ip === '::1' || req.ip === '127.0.0.1') ? '86.124.183.45' : req.ip; // IP Испании для теста

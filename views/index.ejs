@@ -148,7 +148,7 @@
     </p>
     <form id="lang-form" style="display:inline; margin-left: 16px; min-width: 50px;">
         <select id="lang-select" name="lang" class="form-select form-select-sm" style="display:inline-block; width:65px; height:28px; padding:2px 8px; font-size:13px;">
-            <% (locales || ['en','es','ru','he','zh','ar','pt','fr','de','hi','ja','it','ko','tr','nl','pl','vi','th','uk','ro','id']).forEach(function(l) { %>
+            <% (locales || ['en','es','ru','he','zh','ar','pt','fr','de','hi','ja','it','el','ko','tr','nl','pl','vi','th','uk','ro','id']).forEach(function(l) { %>
                 <option value="<%= l %>" <%= (locale === l) ? 'selected' : '' %>><%= l.toUpperCase() %></option>
             <% }) %>
         </select>

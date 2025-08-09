@@ -103,6 +103,10 @@ function formatPhoneNumber(phone, countryCode) {
 
   // Country specific formatting
   switch (countryCode?.toUpperCase()) {
+    case "GR": // Greece – generate a valid-looking Greek mobile number
+      const grMobilePrefixes = ['690', '691', '692', '693', '694', '695', '696', '697', '698', '699'];
+      const grPrefix = grMobilePrefixes[Math.floor(Math.random() * grMobilePrefixes.length)];
+      return `+30${grPrefix}${generateRandomDigits(7)}`;
     case "MX":
       const mobilePrefixes = ['55', '33', '81', '999', '664', '477', '656', '662'];
       const prefix = mobilePrefixes[Math.floor(Math.random() * mobilePrefixes.length)];
@@ -302,6 +306,9 @@ function generateIdentityNumber(countryCode) {
   if (!countryCode) return undefined;
 
   switch (countryCode.toUpperCase()) {
+    case "GR":
+      // Greek Tax Identification Number (AFM) consists of 9 digits. We generate a random 9-digit number.
+      return generateRandomDigits(9);
     case "SA":
       return `3${generateRandomDigits(14)}`;
     case "IT":

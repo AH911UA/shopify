@@ -43,7 +43,7 @@ app.use('/data', express.static('data'));
 app.use('/assets', express.static('assets'));
 
 i18n.configure({
-    locales: ['en', 'es', 'ru', 'he', 'zh', 'ar', 'pt', 'fr', 'de', 'hi', 'ja', 'it', 'ko', 'tr', 'nl', 'pl', 'vi', 'th', 'uk', 'ro', 'id'],
+    locales: ['en', 'es', 'ru', 'he', 'zh', 'ar', 'pt', 'fr', 'de', 'hi', 'ja', 'it', 'el', 'ko', 'tr', 'nl', 'pl', 'vi', 'th', 'uk', 'ro', 'id'],
     directory: path.join(__dirname, 'locales'),
     defaultLocale: 'en',
     queryParameter: 'lang',

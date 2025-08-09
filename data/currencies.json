@@ -9,6 +9,7 @@
   {"cc": "ES", "symbol": "€", "name": "EUR"},
   {"cc": "NL", "symbol": "€", "name": "EUR"},
   {"cc": "PT", "symbol": "€", "name": "EUR"},
+  {"cc": "GR", "symbol": "€", "name": "EUR"},
   {"cc": "RO", "symbol": "lei", "name": "RON"},
   {"cc": "US", "symbol": "$", "name": "USD"},
   {"cc": "CA", "symbol": "$", "name": "CAD"},

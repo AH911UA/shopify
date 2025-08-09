@@ -1,4 +1,5 @@
 const prisma = require('../lib/prisma');
+const { notifyDbChanged, ensureNextRecurringForNewPayments } = require('../cron-payment-scheduler');
 
 class SubscriptionController {
 
@@ -23,10 +24,17 @@ class SubscriptionController {
           bid: body?.bid,
           userHash: userHash,
           locale: body?.locale,
+          // Первичная инициализация полей ребилла
+          timezone: undefined,
+          nextRecurringAt: null,
+          isRecurringActive: true,
         }
       });
       
       console.log('✅ Payment saved to database:', payment.id);
+      // Обеспечим расписание first nextRecurringAt и запустим проверку
+      await ensureNextRecurringForNewPayments();
+      await notifyDbChanged();
       return payment;
     } catch (error) {
       console.error('❌ Error saving payment to database:', error);

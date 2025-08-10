@@ -3,36 +3,13 @@ const moment = require('moment-timezone');
 const axios = require('axios');
 const prisma = require('./lib/prisma');
 
-// --- Utilities ----------------------------------------------------------------
+// Импортируем функцию retrySubscription из retryController
+const { retrySubscription } = require('./controllers/retryController');
 
-function getTimezoneByCountry(countryCode) {
-  const timezoneMap = {
-    US: 'America/New_York',
-    RU: 'Europe/Moscow',
-    UA: 'Europe/Kiev',
-    TR: 'Europe/Istanbul',
-    GB: 'Europe/London',
-    DE: 'Europe/Berlin',
-    FR: 'Europe/Paris',
-    IT: 'Europe/Rome',
-    ES: 'Europe/Madrid',
-    PL: 'Europe/Warsaw',
-    RO: 'Europe/Bucharest',
-    NL: 'Europe/Amsterdam',
-    PT: 'Europe/Lisbon',
-    SA: 'Asia/Riyadh',
-    ID: 'Asia/Jakarta',
-    TH: 'Asia/Bangkok',
-    VI: 'Asia/Ho_Chi_Minh',
-    JA: 'Asia/Tokyo',
-    KO: 'Asia/Seoul',
-    ZH: 'Asia/Shanghai',
-    HE: 'Asia/Jerusalem',
-    HI: 'Asia/Kolkata',
-    MX: 'America/Mexico_City',
-  };
-  return timezoneMap[(countryCode || '').toUpperCase()] || 'UTC';
-}
+// Импортируем утилиты из schedulerController
+const { getTimezoneByCountry, computeLocalAt } = require('./controllers/schedulerController');
+
+// --- Utilities ----------------------------------------------------------------
 
 function computeNextRecurringAt(createdAt, timezone) {
   // Первый ребилл через 7 дней, в 23:30 локального времени пользователя
@@ -46,6 +23,48 @@ async function attemptRebill(payment) {
   try {
     console.log(`🔄 Attempting rebill for payment ${payment.id}`);
 
+    // Гибридный подход: сначала пробуем retry с существующим referenceCode
+    if (payment.subscriptionReferenceCode) {
+      console.log(`🔄 Trying retry with existing referenceCode: ${payment.subscriptionReferenceCode}`);
+      
+      try {
+        const retryResult = await retrySubscription(payment.subscriptionReferenceCode);
+        
+        if (retryResult.success) {
+          // Успех retry: отключаем дальнейшие попытки и ставим следующую дату через 7 дней
+          const tz = payment.timezone || getTimezoneByCountry(payment.countryCode);
+          const nextAt = computeNextRecurringAt(new Date(), tz);
+          await prisma.payment.update({
+            where: { id: payment.id },
+            data: {
+              lastAttemptAt: new Date(),
+              rebillAttempts: (payment.rebillAttempts || 0) + 1,
+              nextRecurringAt: nextAt,
+              isRecurringActive: true,
+              rebillLog: [
+                ...(payment.rebillLog || []),
+                {
+                  status: 'success',
+                  at: new Date().toISOString(),
+                  stage: 'retry-success',
+                  raw: retryResult,
+                }
+              ],
+            },
+          });
+          console.log(`✅ Retry succeeded for ${payment.id}`);
+          return true;
+        } else {
+          console.log(`⚠️ Retry failed for ${payment.id}: ${retryResult.error}. Falling back to new subscription.`);
+        }
+      } catch (retryError) {
+        console.log(`⚠️ Retry error for ${payment.id}: ${retryError.message}. Falling back to new subscription.`);
+      }
+    }
+
+    // Fallback: создаем новую подписку через /pay
+    console.log(`🔄 Creating new subscription for payment ${payment.id}`);
+    
     const payload = {
       firstName: payment.firstName,
       lastName: payment.lastName,
@@ -90,14 +109,18 @@ async function attemptRebill(payment) {
           rebillAttempts: (payment.rebillAttempts || 0) + 1,
           nextRecurringAt: nextAt,
           isRecurringActive: true,
-          rebillLog: {
-            status: 'success',
-            at: new Date().toISOString(),
-            raw: response.data,
-          },
+          rebillLog: [
+            ...(payment.rebillLog || []),
+            {
+              status: 'success',
+              at: new Date().toISOString(),
+              stage: 'new-subscription-success',
+              raw: response.data,
+            }
+          ],
         },
       });
-      console.log(`✅ Rebill succeeded for ${payment.id}`);
+      console.log(`✅ New subscription succeeded for ${payment.id}`);
       return true;
     }
 
@@ -107,25 +130,29 @@ async function attemptRebill(payment) {
     const updateData = {
       lastAttemptAt: new Date(),
       rebillAttempts: (payment.rebillAttempts || 0) + 1,
-      rebillLog: {
-        status: 'failure',
-        at: new Date().toISOString(),
-        error: {
-          code: response?.data?.errorCode,
-          message: response?.data?.errorMessage || response?.statusText,
-          group: response?.data?.errorGroup,
-          errors: response?.data?.errors,
-        },
-      },
+      rebillLog: [
+        ...(payment.rebillLog || []),
+        {
+          status: 'failure',
+          at: new Date().toISOString(),
+          stage: 'new-subscription-failure',
+          error: {
+            code: response?.data?.errorCode,
+            message: response?.data?.errorMessage || response?.statusText,
+            group: response?.data?.errorGroup,
+            errors: response?.data?.errors,
+          },
+        }
+      ],
     };
     if (isInsufficient) {
       updateData.nextRecurringAt = retryAt;
       updateData.isRecurringActive = true;
-      console.warn(`⚠️ Rebill failed (insufficient funds) for ${payment.id}. Next attempt at ${retryAt.toISOString()}`);
+      console.warn(`⚠️ New subscription failed (insufficient funds) for ${payment.id}. Next attempt at ${retryAt.toISOString()}`);
     } else {
       updateData.nextRecurringAt = null;
       updateData.isRecurringActive = false;
-      console.warn(`⛔ Rebill failed (non-retryable) for ${payment.id}. Disabling further attempts.`);
+      console.warn(`⛔ New subscription failed (non-retryable) for ${payment.id}. Disabling further attempts.`);
     }
     await prisma.payment.update({ where: { id: payment.id }, data: updateData });
     return false;
@@ -139,7 +166,15 @@ async function attemptRebill(payment) {
       rebillAttempts: (payment.rebillAttempts || 0) + 1,
       nextRecurringAt: retryAt,
       isRecurringActive: true,
-      rebillLog: { status: 'failure', at: new Date().toISOString(), error: { message: error.message } },
+      rebillLog: [
+        ...(payment.rebillLog || []),
+        { 
+          status: 'failure', 
+          at: new Date().toISOString(),
+          stage: 'technical-error',
+          error: { message: error.message } 
+        }
+      ],
     }});
     return false;
   }

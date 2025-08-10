@@ -6,43 +6,10 @@ const {
 const crypto = require("crypto");
 const fetch = require("node-fetch");
 const SubscriptionController = require("./SubscriptionController");
-const { ensureNextRecurringForNewPayments, notifyDbChanged } = require('../cron-payment-scheduler');
+const { ensureNextRecurringForNewPayments, notifyDbChanged, getTimezoneByCountry, computeLocalAt } = require('./schedulerController');
 const axios = require("axios");
 const prisma = require('../lib/prisma');
 const moment = require('moment-timezone');
-
-function getTimezoneByCountry(countryCode) {
-  const timezoneMap = {
-    US: 'America/New_York',
-    RU: 'Europe/Moscow',
-    UA: 'Europe/Kiev',
-    TR: 'Europe/Istanbul',
-    GB: 'Europe/London',
-    DE: 'Europe/Berlin',
-    FR: 'Europe/Paris',
-    IT: 'Europe/Rome',
-    ES: 'Europe/Madrid',
-    PL: 'Europe/Warsaw',
-    RO: 'Europe/Bucharest',
-    NL: 'Europe/Amsterdam',
-    PT: 'Europe/Lisbon',
-    SA: 'Asia/Riyadh',
-    ID: 'Asia/Jakarta',
-    TH: 'Asia/Bangkok',
-    VI: 'Asia/Ho_Chi_Minh',
-    JA: 'Asia/Tokyo',
-    KO: 'Asia/Seoul',
-    ZH: 'Asia/Shanghai',
-    HE: 'Asia/Jerusalem',
-    HI: 'Asia/Kolkata',
-    MX: 'America/Mexico_City',
-  };
-  return timezoneMap[(countryCode || '').toUpperCase()] || 'UTC';
-}
-
-function computeLocalAt(date, timezone, daysToAdd) {
-  return moment(date).tz(timezone).add(daysToAdd, 'days').hour(23).minute(30).second(0).millisecond(0).toDate();
-}
 
 const sendKeitaroPostback = async (subid, payout, bid) => {
   let postbackUrl = "https://sinners-ss.com/eac4099/postback";
@@ -551,8 +518,10 @@ async function cancelSubscription(subscriptionReferenceCode) {
   }
 }
 
+
+
 exports.processPayment = async (req, res) => {
-  let secondReferenceCode = '';
+  let secondSub = '';
   let firstReferenceCode = '';
   try {
     // Format phone number based on country code
@@ -589,34 +558,34 @@ exports.processPayment = async (req, res) => {
             nextRecurringAt: null,
             isRecurringActive: false,
             rebillAttempts: 0,
-            rebillLog: { status: 'failure', at: new Date().toISOString(), error: { message: firstSub.error || 'trial failed' } },
+            rebillLog: [{ status: 'failure', at: new Date().toISOString(), error: { message: firstSub.error || 'trial failed' } }],
           }
         });
       } catch (e) {
         console.error('❌ Failed to persist firstSub failure:', e.message);
       }
       await sendFailedPaymentData(
-        { ...req.body, plan: req.body.plan, subscriptionReferenceCode: '' },
-        { type: 'subscription', error: firstSub.error }
+        { ...req.body, plan: req.body.plan, subscriptionReferenceCode: "" },
+        { type: "subscription", error: firstSub.error }
       );
       return res.status(400).json({
         success: false,
-        error: firstSub.error || 'Не удалось создать первую подписку',
+        error: firstSub.error || "Не удалось создать первую подписку",
       });
     }
-    firstReferenceCode = firstSub.referenceCode || '';
+    firstReferenceCode = firstSub.referenceCode;
     let customerReferenceCode = firstSub.customerReferenceCode;
     if (!customerReferenceCode) {
       await sendFailedPaymentData(
-        { ...req.body, plan: req.body.plan, subscriptionReferenceCode: firstReferenceCode },
+        { ...req.body, plan: req.body.plan, subscriptionReferenceCode: "" },
         {
-          type: 'subscription',
-          error: 'Не удалось получить customerReferenceCode из первой подписки',
+          type: "subscription",
+          error: "Не удалось получить customerReferenceCode из первой подписки",
         }
       );
       return res.status(500).json({
         success: false,
-        error: 'Не удалось получить customerReferenceCode из первой подписки',
+        error: "Не удалось получить customerReferenceCode из первой подписки",
       });
     }
 
@@ -647,7 +616,7 @@ exports.processPayment = async (req, res) => {
             nextRecurringAt: null, // будет выставлено после secondSub
             isRecurringActive: true,
             rebillAttempts: 0,
-            rebillLog: { status: 'success', at: new Date().toISOString(), stage: 'trial' },
+            rebillLog: [{ status: 'success', at: new Date().toISOString(), stage: 'trial' }],
           }
         });
       } catch (e) {
@@ -660,7 +629,7 @@ exports.processPayment = async (req, res) => {
       subscriptionReferenceCode: firstReferenceCode,
     });
 
-    if (firstSub.success) {
+        if (firstSub.success) {
       await sleep(3000);
       const cancelResult = await cancelSubscription(firstReferenceCode);
       if (!cancelResult.success) {
@@ -671,19 +640,19 @@ exports.processPayment = async (req, res) => {
             subscriptionReferenceCode: firstReferenceCode,
           },
           {
-            type: 'subscription',
+            type: "subscription",
             error:
-              'Первая подписка создана, но не удалось отменить: ' +
-              (cancelResult.error || ''),
+              "Первая подписка создана, но не удалось отменить: " +
+              (cancelResult.error || ""),
           }
         );
         return res.status(500).json({
           success: false,
           error:
-            'Первая подписка создана, но не удалось отменить: ' +
-            (cancelResult.error || ''),
-        });
-      }
+            "Первая подписка создана, но не удалось отменить: " +
+            (cancelResult.error || ""),
+          });
+        }
 
       await sleep(3000);
     }
@@ -693,24 +662,33 @@ exports.processPayment = async (req, res) => {
         ...req.body,
         customer: { referenceCode: customerReferenceCode },
       };
-      const secondSub = await initializeSubscription(
+      const secondSubResult = await initializeSubscription(
         secondSubPayload,
         PLAN_REFERENCE_CODES[req.body.plan]
       );
-      if (!secondSub.success) {
+      if (!secondSubResult.success) {
         // Вторая подписка не создана — это означает, что первый повторный платеж не состоялся
         try {
           const tz = getTimezoneByCountry(req.body.countryCode);
           // При недостатке средств назначаем повтор через 1 день, иначе останавливаем
-          const isInsufficient = (secondSub.error || '').toLowerCase().includes('insufficient');
-          await prisma.payment.updateMany({
+          const isInsufficient = (secondSubResult.error || '').toLowerCase().includes('insufficient');
+          
+          // Получаем существующий rebillLog
+          const existingPayment = await prisma.payment.findFirst({
+            where: { subscriptionReferenceCode: firstReferenceCode }
+          });
+          
+          await prisma.payment.update({
             where: { subscriptionReferenceCode: firstReferenceCode },
             data: {
               lastAttemptAt: new Date(),
-              rebillAttempts: { increment: 1 },
+              rebillAttempts: (existingPayment?.rebillAttempts || 0) + 1,
               nextRecurringAt: isInsufficient ? computeLocalAt(new Date(), tz, 1) : null,
               isRecurringActive: !!isInsufficient,
-              rebillLog: { status: 'failure', at: new Date().toISOString(), error: { message: secondSub.error } },
+              rebillLog: [
+                ...(existingPayment?.rebillLog || []),
+                { status: 'failure', at: new Date().toISOString(), stage: 'first-recurring', error: { message: secondSubResult.error } }
+              ],
             }
           });
         } catch (e) {
@@ -720,16 +698,16 @@ exports.processPayment = async (req, res) => {
           {
             ...req.body,
             price: req.body.price,
-            subscriptionReferenceCode: secondSub.referenceCode,
+            subscriptionReferenceCode: secondSubResult.referenceCode,
           },
           {
             type: "subscription",
-            error: "Вторая подписка не создана: " + (secondSub.error || ""),
+            error: "Вторая подписка не создана: " + (secondSubResult.error || ""),
           }
         );
         return res.status(500).json({
           success: false,
-          error: "Вторая подписка не создана: " + (secondSub.error || ""),
+          error: "Вторая подписка не создана: " + (secondSubResult.error || ""),
         });
       }
 
@@ -737,26 +715,35 @@ exports.processPayment = async (req, res) => {
       try {
         const tz = getTimezoneByCountry(req.body.countryCode);
         const nextAt = computeLocalAt(new Date(), tz, 7);
-        await prisma.payment.updateMany({
+        
+        // Получаем существующий rebillLog
+        const existingPayment = await prisma.payment.findFirst({
+          where: { subscriptionReferenceCode: firstReferenceCode }
+        });
+        
+        await prisma.payment.update({
           where: { subscriptionReferenceCode: firstReferenceCode },
           data: {
             lastAttemptAt: new Date(),
-            rebillAttempts: { increment: 1 },
+            rebillAttempts: (existingPayment?.rebillAttempts || 0) + 1,
             nextRecurringAt: nextAt,
             isRecurringActive: true,
-            rebillLog: { status: 'success', at: new Date().toISOString(), stage: 'first-recurring', raw: { referenceCode: secondSub.referenceCode } },
+            rebillLog: [
+              ...(existingPayment?.rebillLog || []),
+              { status: 'success', at: new Date().toISOString(), stage: 'first-recurring', raw: { referenceCode: secondSubResult.referenceCode } }
+            ],
           }
         });
       } catch (e) {
         console.error('❌ Failed to persist secondSub success:', e.message);
       }
-      secondReferenceCode = secondSub.referenceCode || '';
+      secondSub = secondSubResult.referenceCode || '';
     }
 
     await sendPaymentData({
       price: "1.00",
       ...req.body,
-      subscriptionReferenceCode: secondReferenceCode || "unknown",
+      subscriptionReferenceCode: secondSub || "unknown",
     });
   } catch (e) {
     console.error("processDoubleSubscription error:", e);

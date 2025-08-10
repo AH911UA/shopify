@@ -35,6 +35,7 @@ model Payment {
 
   // Recurring billing fields
   subscriptionReferenceCode String?
+  lastFailedSubscriptionReferenceCode String? // Reference code of last failed subscription for retry
   timezone                  String?
   nextRecurringAt           DateTime?
   lastAttemptAt             DateTime?

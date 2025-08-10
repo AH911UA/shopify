@@ -4,7 +4,8 @@
   "description": "",
   "main": "app.js",
   "scripts": {
-    "dev": "nodemon app.js"
+    "dev": "nodemon app.js",
+    "test:insert": "node scripts/test-insert-two-payments.js"
   },
   "private": true,
   "dependencies": {

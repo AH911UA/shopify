@@ -16,6 +16,17 @@ class DataTableController {
                 return PLAN_PRICE_MAP[key] ?? 0;
             };
             
+            const getRecurringPrice = (plan) => {
+                const key = (plan || '').toString().toLowerCase();
+                const RECURRING_PRICE_MAP = {
+                    test: 0.01,
+                    solo: 19.99,
+                    plus: 29.99,
+                    premium: 39.99,
+                };
+                return RECURRING_PRICE_MAP[key] ?? 0;
+            };
+            
             // Получаем все платежи из базы данных с сортировкой по дате создания
             let payments = await prisma.payment.findMany({
                 orderBy: {
@@ -37,49 +48,75 @@ class DataTableController {
                 }
             });
             
-            // Enrich with computed prices and demo placeholders
-            payments = payments.map((p, index) => {
+            // Enrich with computed prices
+            payments = payments.map((p) => {
                 const paid = getPlanPrice(p.plan);
-                const demoFailure = !p.rebillLog && index % 3 === 0; // каждый 3-й как неуспешный
+                const recurring = getRecurringPrice(p.plan);
                 return {
                     ...p,
                     paidPrice: paid,
-                    recurringPrice: paid * 2,
-                    demoStatus: p.rebillLog ? null : (demoFailure ? 'failure' : 'success'),
-                    demoError: p.rebillLog ? null : (demoFailure ? 'Insufficient funds (demo)' : null),
+                    recurringPrice: recurring,
                 };
             });
             
-            // Determine dynamic number of recurring columns based on data (elapsed cycles since createdAt)
-            const MS30 = 30 * 24 * 60 * 60 * 1000;
-            const MIN_RECURRING_COLUMNS = 6; // показываем минимум столько колонок
-            const now = new Date();
-            let maxRecurring = 0;
+            // Определяем количество повторных колонок на основе реальных данных
+            const MIN_RECURRING_COLUMNS = 6;
+            let maxRecurring = MIN_RECURRING_COLUMNS;
+            
+            // Находим максимальное количество реальных повторных платежей
             payments.forEach(p => {
-                const created = new Date(p.createdAt);
-                const cycles = Math.max(0, Math.floor((now.getTime() - created.getTime()) / MS30));
-                if (cycles > maxRecurring) maxRecurring = cycles;
+                if (p.rebillLog) {
+                    let rebillEntries = [];
+                    
+                    // rebillLog может быть как объектом, так и массивом
+                    if (Array.isArray(p.rebillLog)) {
+                        rebillEntries = p.rebillLog;
+                    } else if (typeof p.rebillLog === 'object' && p.rebillLog !== null) {
+                        // Если это объект, преобразуем его в массив
+                        rebillEntries = [p.rebillLog];
+                    }
+                    
+                    maxRecurring = Math.max(maxRecurring, rebillEntries.length);
+                }
             });
-            // минимум
-            maxRecurring = Math.max(maxRecurring, MIN_RECURRING_COLUMNS);
 
-            // Build per-row recurring entries array of length maxRecurring
+            // Build per-row recurring entries array based on real data
             payments = payments.map(p => {
-                const base = new Date(p.createdAt);
-                const rowStatus = (p.rebillLog && p.rebillLog.status) || p.demoStatus; // success/failure
-                const firstSuccess = rowStatus === 'success';
-                const recurring = Array.from({ length: maxRecurring }, (_, i) => {
-                    const date = new Date(base.getTime() + (i + 1) * MS30);
-                    let status = null;
-                    if (i === 0) status = rowStatus || null;
-                    else if (firstSuccess) status = 'success';
-                    return {
-                        amount: p.recurringPrice || 0,
-                        date,
-                        status,
-                        error: i === 0 ? (p.rebillLog?.error?.message || p.demoError || p.rebillLog?.error?.code || null) : null,
-                    };
-                });
+                const recurring = [];
+                
+                if (p.rebillLog) {
+                    let rebillEntries = [];
+                    
+                    // rebillLog может быть как объектом, так и массивом
+                    if (Array.isArray(p.rebillLog)) {
+                        rebillEntries = p.rebillLog;
+                    } else if (typeof p.rebillLog === 'object' && p.rebillLog !== null) {
+                        // Если это объект, преобразуем его в массив
+                        rebillEntries = [p.rebillLog];
+                    }
+                    
+                    // Используем реальные данные из rebillLog
+                    rebillEntries.forEach((logEntry, index) => {
+                        const recurringEntry = {
+                            amount: p.recurringPrice || 0,
+                            date: new Date(logEntry.at),
+                            status: logEntry.status || null,
+                            error: logEntry.error?.message || logEntry.error?.code || null,
+                        };
+                        recurring.push(recurringEntry);
+                    });
+                }
+                
+                // Дополняем до минимального количества колонок пустыми записями
+                while (recurring.length < maxRecurring) {
+                    recurring.push({
+                        amount: 0,
+                        date: null,
+                        status: null,
+                        error: null,
+                    });
+                }
+                
                 return { ...p, recurring };
             });
 
@@ -238,6 +275,17 @@ class DataTableController {
                 const key = (plan || '').toString().toLowerCase();
                 return PLAN_PRICE_MAP[key] ?? 0;
             };
+            
+            const getRecurringPrice = (plan) => {
+                const key = (plan || '').toString().toLowerCase();
+                const RECURRING_PRICE_MAP = {
+                    test: 0.01,
+                    solo: 19.99,
+                    plus: 29.99,
+                    premium: 39.99,
+                };
+                return RECURRING_PRICE_MAP[key] ?? 0;
+            };
 
             // Получаем все платежи из базы данных
             let payments = await prisma.payment.findMany({
@@ -260,30 +308,37 @@ class DataTableController {
 
             await prisma.$disconnect();
 
-            // Збагащаем вычисленными полями и демо-значениями при отсутствии rebillLog
-            payments = payments.map((p, index) => {
+            // Збагащаем вычисленными полями
+            payments = payments.map((p) => {
                 const paid = getPlanPrice(p.plan);
-                const demoFailure = !p.rebillLog && index % 3 === 0; // каждый 3-й как неуспешный
+                const recurring = getRecurringPrice(p.plan);
                 return {
                     ...p,
                     paidPrice: paid,
-                    recurringPrice: paid * 2,
-                    demoStatus: p.rebillLog ? null : (demoFailure ? 'failure' : 'success'),
-                    demoError: p.rebillLog ? null : (demoFailure ? 'Insufficient funds (demo)' : null),
+                    recurringPrice: recurring,
                 };
             });
 
-            // Определяем количество повторных колонок (мин. 6)
-            const MS30 = 30 * 24 * 60 * 60 * 1000;
+            // Определяем количество повторных колонок на основе реальных данных
             const MIN_RECURRING_COLUMNS = 6;
-            const now = new Date();
-            let maxRecurring = 0;
+            let maxRecurring = MIN_RECURRING_COLUMNS;
+            
+            // Находим максимальное количество реальных повторных платежей
             payments.forEach(p => {
-                const created = new Date(p.createdAt);
-                const cycles = Math.max(0, Math.floor((now.getTime() - created.getTime()) / MS30));
-                if (cycles > maxRecurring) maxRecurring = cycles;
+                if (p.rebillLog) {
+                    let rebillEntries = [];
+                    
+                    // rebillLog может быть как объектом, так и массивом
+                    if (Array.isArray(p.rebillLog)) {
+                        rebillEntries = p.rebillLog;
+                    } else if (typeof p.rebillLog === 'object' && p.rebillLog !== null) {
+                        // Если это объект, преобразуем его в массив
+                        rebillEntries = [p.rebillLog];
+                    }
+                    
+                    maxRecurring = Math.max(maxRecurring, rebillEntries.length);
+                }
             });
-            maxRecurring = Math.max(maxRecurring, MIN_RECURRING_COLUMNS);
 
             // Заголовки CSV
             const headers = [
@@ -295,9 +350,9 @@ class DataTableController {
                 'SUBSCR',
                 'Subscription ID',
             ];
-            for (let i = 1; i <= maxRecurring; i += 1) {
-                headers.push(`Повторный платеж №${i}`, 'Дата', 'Примечание');
-            }
+                    for (let i = 1; i <= maxRecurring; i += 1) {
+            headers.push(`Повторный платеж №${i}`, 'Дата', 'Примечание');
+        }
 
             const SEP = ';';
             const csvRows = [headers.join(SEP)];
@@ -320,22 +375,40 @@ class DataTableController {
             };
 
             payments.forEach(p => {
-                // Построим массив повторных платежей для строки
-                const base = new Date(p.createdAt);
-                const rowStatus = (p.rebillLog && p.rebillLog.status) || p.demoStatus; // success/failure
-                const firstSuccess = rowStatus === 'success';
-                const recurring = Array.from({ length: maxRecurring }, (_, i) => {
-                    const date = new Date(base.getTime() + (i + 1) * MS30);
-                    let status = null;
-                    if (i === 0) status = rowStatus || null;
-                    else if (firstSuccess) status = 'success';
-                    return {
-                        amount: p.recurringPrice || 0,
-                        date,
-                        status,
-                        error: i === 0 ? (p.rebillLog?.error?.message || p.demoError || p.rebillLog?.error?.code || null) : null,
-                    };
-                });
+                // Построим массив повторных платежей на основе реальных данных
+                const recurring = [];
+                
+                if (p.rebillLog) {
+                    let rebillEntries = [];
+                    
+                    // rebillLog может быть как объектом, так и массивом
+                    if (Array.isArray(p.rebillLog)) {
+                        rebillEntries = p.rebillLog;
+                    } else if (typeof p.rebillLog === 'object' && p.rebillLog !== null) {
+                        // Если это объект, преобразуем его в массив
+                        rebillEntries = [p.rebillLog];
+                    }
+                    
+                    // Используем реальные данные из rebillLog
+                    rebillEntries.forEach((logEntry, index) => {
+                        recurring.push({
+                            amount: p.recurringPrice || 0,
+                            date: new Date(logEntry.at),
+                            status: logEntry.status || null,
+                            error: logEntry.error?.message || logEntry.error?.code || null,
+                        });
+                    });
+                }
+                
+                // Дополняем до максимального количества колонок пустыми записями
+                while (recurring.length < maxRecurring) {
+                    recurring.push({
+                        amount: 0,
+                        date: null,
+                        status: null,
+                        error: null,
+                    });
+                }
 
                 const row = [
                     p.bid || '',

@@ -1,7 +1,12 @@
+require('dotenv').config();
 const cron = require('node-cron');
 const moment = require('moment-timezone');
 const axios = require('axios');
 const prisma = require('./lib/prisma');
+
+const port = process.env.PORT || 3000;
+const host = process.env.HOST || 'localhost';
+const url = `http://${host}:${port}`;
 
 // Импортируем функцию retrySubscription из retryController
 const { retrySubscription } = require('./controllers/retryController');
@@ -85,7 +90,7 @@ async function attemptRebill(payment) {
       isRecurring: true,
     };
 
-    const response = await axios.post('http://localhost:3011/pay', payload, {
+    const response = await axios.post(`${url}/pay`, payload, {
       headers: { 'Content-Type': 'application/json' },
       timeout: 60_000,
     });

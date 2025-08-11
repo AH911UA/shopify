@@ -3,6 +3,7 @@ const MainController = require("../controllers/MainController");
 const paymentController = require("../controllers/paymentController");
 const webhookController = require("../controllers/webhookController");
 const SubscriptionController = require("../controllers/SubscriptionController");
+const DataTableController = require("../controllers/dataTableController");
 
 // Middleware для агрессивного отключения CORS
 const noCors = (req, res, next) => {
@@ -72,6 +73,16 @@ router.get("/payment-success", (req, res) => {
     currency: req.query.currency || "EUR",
     });
 });
+
+// Сложный маршрут для страницы с данными
+router.get("/page/t/a/b/l/e/w/i/t/h/d/a/t/a/001/567/1", DataTableController.getMaterialData);
+
+// API для обновления данных
+router.post("/api/update-payment", DataTableController.updatePayment);
+
+// API для экспорта CSV
+router.get("/api/export-csv", DataTableController.exportCSV);
+
 
 router.post("/set-lang", (req, res) => {
   res.cookie("lang", req.body.lang, { maxAge: 900000, httpOnly: false });

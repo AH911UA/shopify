@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="<%= locale %>">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Material Data</title>
+    <!-- Material Design Web Components -->
+    <link href="https://unpkg.com/material-components-web@latest/dist/material-components-web.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #fafafa;
+            font-family: 'Roboto', sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        
+        .mdc-top-app-bar {
+            background-color: #1976d2;
+            color: white;
+        }
+        
+        .mdc-top-app-bar__title {
+            color: white;
+        }
+        
+        .material-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        .material-table th {
+            background-color: #f5f5f5;
+            color: #333;
+            font-weight: 500;
+            text-align: left;
+            padding: 16px;
+            font-size: 14px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .material-table td {
+            padding: 16px;
+            font-size: 14px;
+            border-bottom: 1px solid #e0e0e0;
+            color: #333;
+            position: relative;
+            transition: all 0.2s ease;
+        }
+        
+        .material-table tbody tr:hover {
+            background-color: #f8f9fa;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        
+        .editable-cell {
+            cursor: pointer;
+            position: relative;
+            padding: 8px 12px;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+        }
+        
+        .editable-cell:hover {
+            background-color: #e3f2fd;
+            border: 1px solid #1976d2;
+        }
+        
+        .editable-cell.editing {
+            background-color: white;
+            border: 2px solid #1976d2;
+            box-shadow: 0 2px 8px rgba(25, 118, 210, 0.3);
+        }
+        
+        .editable-input {
+            width: 100%;
+            border: none;
+            outline: none;
+            font-size: 14px;
+            font-family: 'Roboto', sans-serif;
+            background: transparent;
+            color: #333;
+        }
+        
+        .validation-error {
+            border-color: #f44336 !important;
+            background-color: #ffebee !important;
+        }
+        
+        .validation-success {
+            border-color: #4caf50 !important;
+            background-color: #e8f5e9 !important;
+        }
+        
+        .save-indicator {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: #4caf50;
+            color: white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            animation: savePulse 0.6s ease;
+        }
+        
+        @keyframes savePulse {
+            0% { transform: scale(0); opacity: 0; }
+            50% { transform: scale(1.2); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        
+        .material-card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            padding: 24px;
+            margin: 16px;
+        }
+        
+        .material-button {
+            background: linear-gradient(135deg, #1976d2, #42a5f5);
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(25, 118, 210, 0.3);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .material-button:hover {
+            background: linear-gradient(135deg, #1565c0, #1976d2);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(25, 118, 210, 0.4);
+        }
+        
+        .material-button:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 8px rgba(25, 118, 210, 0.3);
+        }
+        
+        .material-button.secondary {
+            background-color: #757575;
+        }
+        
+        .material-button.secondary:hover {
+            background-color: #616161;
+        }
+        
+        .material-text-field {
+            width: 100%;
+            padding: 16px 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            font-family: 'Roboto', sans-serif;
+            transition: all 0.3s ease;
+            background: #fafafa;
+        }
+        
+        .material-text-field:focus {
+            outline: none;
+            border-color: #1976d2;
+            background: white;
+            box-shadow: 0 4px 12px rgba(25, 118, 210, 0.2);
+            transform: translateY(-1px);
+        }
+        
+        .material-text-field:hover {
+            border-color: #bbdefb;
+            background: white;
+        }
+        
+        .status-chip {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 16px;
+            font-size: 12px;
+            font-weight: 500;
+            text-transform: uppercase;
+        }
+        
+        .status-chip.success {
+            background-color: #e8f5e8;
+            color: #2e7d32;
+        }
+        
+        .status-chip.warning {
+            background-color: #fff8e1;
+            color: #f57c00;
+        }
+
+        /* Plan chips (SUBSCR) */
+        .plan-chip {
+            display: inline-block;
+            padding: 6px 10px;
+            border-radius: 14px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            background: #eceff1;
+            color: #455a64;
+        }
+        .plan-chip.solo { background: #e3f2fd; color: #1976d2; }
+        .plan-chip.plus { background: #ede7f6; color: #7e57c2; }
+        .plan-chip.premium { background: #fff3e0; color: #f57c00; }
+        .plan-chip.test { background: #eceff1; color: #607d8b; }
+        
+
+        
+        .currency-amount {
+            font-weight: 500;
+            color: #2e7d32;
+        }
+        
+        .date-text {
+            color: #757575;
+            font-size: 12px;
+        }
+        
+        .name-text {
+            font-weight: 500;
+            color: #333;
+        }
+        
+        .geo-text {
+            color: #757575;
+            font-size: 12px;
+        }
+        
+        .subscription-id {
+            font-family: 'Roboto Mono', monospace;
+            font-size: 12px;
+            color: #1976d2;
+        }
+        
+        .recurring-payment {
+            background-color: #e3f2fd;
+            border-radius: 4px;
+            padding: 4px 8px;
+            font-size: 11px;
+            color: #1976d2;
+        }
+        
+        .note-text {
+            font-style: italic;
+            color: #757575;
+            font-size: 11px;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
+            margin: 16px 12px;
+        }
+        
+        .stat-card {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+            padding: 20px 16px;
+            text-align: center;
+            transition: all 0.2s ease;
+            position: relative;
+            overflow: hidden;
+            min-height: 120px;
+        }
+        
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #1976d2, #42a5f5);
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+        }
+        
+        .stat-card h3 {
+            margin: 0 0 8px 0;
+            font-size: 28px;
+            font-weight: 700;
+            color: #1976d2;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.08);
+        }
+        
+        .stat-card p {
+            margin: 0;
+            color: #757575;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+        }
+        
+        .stat-card .material-icons {
+            margin-bottom: 8px;
+            font-size: 36px !important;
+            filter: drop-shadow(0 1px 2px rgba(0,0,0,0.08));
+        }
+        
+        .search-container {
+            padding: 24px;
+            background: white;
+            margin: 16px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            border: 1px solid #e0e0e0;
+        }
+        
+        .search-container:hover {
+            box-shadow: 0 6px 16px rgba(0,0,0,0.15);
+        }
+        
+        .table-container {
+            margin: 16px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <main style="margin-top: 64px;">
+        <!-- Statistics Cards -->
+        <% if (typeof stats !== 'undefined' && stats) { %>
+        <div class="stats-grid">
+            <div class="stat-card">
+                <span class="material-icons" style="font-size: 48px; color: #1976d2;">payment</span>
+                <h3><%= stats.totalPayments %></h3>
+                <p>Total Payments</p>
+            </div>
+            <div class="stat-card">
+                <span class="material-icons" style="font-size: 48px; color: #2e7d32;">euro</span>
+                <h3>€<%= stats.totalRevenue %></h3>
+                <p>Total Revenue</p>
+            </div>
+            <div class="stat-card">
+                <span class="material-icons" style="font-size: 48px; color: #1976d2;">public</span>
+                <h3><%= stats.countries %></h3>
+                <p>Countries</p>
+            </div>
+            <div class="stat-card">
+                <span class="material-icons" style="font-size: 48px; color: #f57c00;">people</span>
+                <h3><%= stats.uniqueCustomers %></h3>
+                <p>Unique Customers</p>
+            </div>
+        </div>
+        <% } %>
+
+        <!-- Search Container -->
+        <div class="search-container">
+            <div style="display: flex; gap: 16px; align-items: center;">
+                <div style="flex: 1;">
+                    <input type="text" class="material-text-field" id="searchInput" placeholder="Search in table..." onkeyup="filterTable()">
+                </div>
+                <button class="material-button" onclick="exportToCSV()" id="exportBtn">
+                    <span class="material-icons" style="margin-right: 8px;">download</span>
+                    Export CSV
+                </button>
+            </div>
+        </div>
+
+        <!-- Table Container -->
+        <div class="table-container">
+            <table class="material-table">
+                 <thead>
+                     <tr>
+                         <th>BID</th>
+                         <th>Created Date</th>
+                         <th>Paid Price</th>
+                         <th>Customer Name</th>
+                         <th>GEO</th>
+                         <th>SUBSCR</th>
+                         <th>Subscription ID</th>
+                         <% for (let i = 1; i <= (typeof maxRecurring !== 'undefined' ? maxRecurring : 0); i++) { %>
+                             <th>Повторный платеж №<%= i %></th>
+                             <th>Дата</th>
+                             <th>Примечание</th>
+                         <% } %>
+                     </tr>
+                 </thead>
+                <tbody>
+                     <% payments.forEach(function(payment) { %>
+                        <tr data-payment-id="<%= payment.id %>">
+                            <td class="subscription-id">
+                                <div class="editable-cell" data-field="bid" data-value="<%= payment.bid || '' %>">
+                                    <strong><%= payment.bid || 'N/A' %></strong>
+                                </div>
+                            </td>
+                            <td class="date-text">
+                                <div class="editable-cell" data-field="createdAt" data-value="<%= payment.createdAt ? new Date(payment.createdAt).toISOString().slice(0,10) : '' %>">
+                                    <%= payment.createdAt ? new Date(payment.createdAt).toLocaleDateString() : 'N/A' %>
+                                </div>
+                            </td>
+                             <td class="currency-amount">
+                                 <div class="editable-cell" data-field="plan" data-value="<%= payment.plan || '' %>">
+                                     <span class="material-icons" style="font-size: 16px; margin-right: 4px;">euro</span>
+                                     <%= (typeof payment.paidPrice !== 'undefined' ? payment.paidPrice : 0).toFixed(2) %>
+                                 </div>
+                             </td>
+                            <td class="name-text">
+                                <div class="editable-cell" data-field="customerName" data-value="<%= ((payment.firstName||'') + ' ' + (payment.lastName||'')).trim() %>">
+                                    <% if (payment.firstName || payment.lastName) { %>
+                                        <%= (payment.firstName || '') + ' ' + (payment.lastName || '') %>
+                                    <% } else { %>
+                                        <span style="color: #757575;">Anonymous</span>
+                                    <% } %>
+                                </div>
+                            </td>
+                            <td class="geo-text">
+                                <div class="editable-cell" data-field="countryCode" data-value="<%= payment.countryCode || '' %>">
+                                    <span class="material-icons" style="font-size: 16px; margin-right: 4px;">public</span>
+                                    <%= payment.countryCode || 'Unknown' %>
+                                </div>
+                            </td>
+                            <td>
+                                <% const planName = (payment.plan || 'unknown').toLowerCase(); %>
+                                <span class="plan-chip <%= ['solo','plus','premium','test'].includes(planName) ? planName : '' %>">
+                                    <%= planName %>
+                                </span>
+                            </td>
+                            <td class="subscription-id">
+                                <%= payment.id %>
+                            </td>
+                             <!-- Динамические повторные платежи -->
+                             <% (payment.recurring || []).forEach(function(r){ %>
+                                 <td class="recurring-payment">
+                                     <span class="material-icons" style="font-size: 14px; margin-right: 4px;">sync</span>
+                                     €<%= (r.amount || 0).toFixed(2) %>
+                                 </td>
+                                 <td class="date-text"><%= r.date ? new Date(r.date).toLocaleDateString() : 'N/A' %></td>
+                                 <td class="note-text">
+                                     <% if (r.status === 'success') { %>
+                                         <span style="color:#2e7d32;font-weight:600;">Successful</span>
+                                     <% } else if (r.status === 'failure') { %>
+                                         <span style="color:#c62828;font-weight:600;">Error: <%= r.error || 'Failed' %></span>
+                                     <% } else { %>
+                                         —
+                                     <% } %>
+                                 </td>
+                             <% }); %>
+                        </tr>
+                    <% }); %>
+                </tbody>
+            </table>
+        </div>
+    </main>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/material-components-web@latest/dist/material-components-web.min.js"></script>
+    <script>
+        // Инициализация Material Design компонентов
+        mdc.autoInit();
+        
+        // Автообновление отключено (ранее было каждые 30с)
+
+        // Добавляем интерактивность таблице
+        document.addEventListener('DOMContentLoaded', function() {
+            const table = document.querySelector('.material-table');
+            const rows = table.querySelectorAll('tbody tr');
+            
+            // Функция валидации
+            function validateField(field, value) {
+                switch(field) {
+                    case 'plan':
+                        return /^[\d.]+$/.test(value);
+                    case 'phone':
+                        return /^[\d\s\-\+\(\)]+$/.test(value);
+                    case 'email':
+                        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+                    case 'countryCode':
+                        return /^[A-Za-z]{2,3}$/.test(value);
+                    default:
+                        return /^[A-Za-z0-9\s]+$/.test(value);
+                }
+            }
+            
+            // Функция сохранения в БД
+            async function saveToDatabase(paymentId, field, value) {
+                try {
+                    const response = await fetch('/api/update-payment', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            id: paymentId,
+                            field: field,
+                            value: value
+                        })
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        // Показываем индикатор сохранения
+                        const saveIndicator = document.createElement('div');
+                        saveIndicator.className = 'save-indicator';
+                        saveIndicator.innerHTML = '✓';
+                        saveIndicator.style.position = 'absolute';
+                        saveIndicator.style.top = '-8px';
+                        saveIndicator.style.right = '-8px';
+                        
+                        const cell = document.querySelector(`[data-payment-id="${paymentId}"] .editable-cell[data-field="${field}"]`);
+                        cell.style.position = 'relative';
+                        cell.appendChild(saveIndicator);
+                        
+                        setTimeout(() => {
+                            saveIndicator.remove();
+                        }, 2000);
+                        
+                        return true;
+                    } else {
+                        throw new Error(result.error || 'Save failed');
+                    }
+                } catch (error) {
+                    console.error('Error saving:', error);
+                    return false;
+                }
+            }
+            
+            // Обработчик редактирования ячеек
+            document.querySelectorAll('.editable-cell').forEach(cell => {
+                cell.addEventListener('click', function(e) {
+                    if (this.classList.contains('editing')) return;
+                    
+                    const field = this.dataset.field;
+                    const currentValue = this.dataset.value || '';
+                    const paymentId = this.closest('tr').dataset.paymentId;
+                    
+                    // Создаем input для редактирования
+                    const input = document.createElement('input');
+                    input.type = 'text';
+                    input.className = 'editable-input';
+                    input.value = currentValue;
+                    
+                    // Очищаем ячейку и добавляем input
+                    this.innerHTML = '';
+                    this.appendChild(input);
+                    this.classList.add('editing');
+                    
+                    // Фокус на input
+                    input.focus();
+                    input.select();
+                    
+                    // Обработчик валидации в реальном времени
+                    input.addEventListener('input', function() {
+                        const isValid = validateField(field, this.value);
+                        this.parentElement.classList.toggle('validation-error', !isValid);
+                        this.parentElement.classList.toggle('validation-success', isValid);
+                    });
+                    
+                    // Обработчик сохранения
+                    const saveChanges = async () => {
+                        const newValue = input.value.trim();
+                        const isValid = validateField(field, newValue);
+                        
+                        if (!isValid) {
+                            alert('Invalid value for this field!');
+                            return;
+                        }
+                        
+                        const success = await saveToDatabase(paymentId, field, newValue);
+                        
+                        if (success) {
+                            // Обновляем отображение
+                            this.classList.remove('editing');
+                            this.dataset.value = newValue;
+                            
+                            if (field === 'plan') {
+                                this.innerHTML = `<span class="material-icons" style="font-size: 16px; margin-right: 4px;">euro</span>${newValue}`;
+                            } else if (field === 'countryCode') {
+                                this.innerHTML = `<span class="material-icons" style="font-size: 16px; margin-right: 4px;">public</span>${newValue.toUpperCase()}`;
+                            } else if (field === 'firstName') {
+                                this.innerHTML = newValue || '<span style="color: #757575;">Anonymous</span>';
+                            } else {
+                                this.innerHTML = newValue || 'N/A';
+                            }
+                        } else {
+                            alert('Failed to save changes!');
+                        }
+                    };
+                    
+                    // Сохранение по Enter
+                    input.addEventListener('keydown', function(e) {
+                        if (e.key === 'Enter') {
+                            e.preventDefault();
+                            saveChanges();
+                        } else if (e.key === 'Escape') {
+                            this.parentElement.classList.remove('editing');
+                            this.parentElement.innerHTML = this.parentElement.dataset.value || 'N/A';
+                        }
+                    });
+                    
+                    // Сохранение при потере фокуса
+                    input.addEventListener('blur', function() {
+                        setTimeout(() => {
+                            if (this.parentElement.classList.contains('editing')) {
+                                saveChanges();
+                            }
+                        }, 100);
+                    });
+                });
+            });
+            
+            rows.forEach((row, index) => {
+                // Добавляем анимацию появления строк
+                setTimeout(() => {
+                    row.style.opacity = '0';
+                    row.style.transform = 'translateX(-20px)';
+                    row.style.transition = 'all 0.3s ease';
+                    
+                    setTimeout(() => {
+                        row.style.opacity = '1';
+                        row.style.transform = 'translateX(0)';
+                    }, index * 50);
+                }, 100);
+            });
+
+            // Функция поиска по таблице
+            window.filterTable = function() {
+                const input = document.getElementById('searchInput');
+                const filter = input.value.toLowerCase();
+                const tbody = table.querySelector('tbody');
+                const rows = tbody.querySelectorAll('tr');
+
+                rows.forEach(row => {
+                    const text = row.textContent.toLowerCase();
+                    row.style.display = text.includes(filter) ? '' : 'none';
+                });
+            };
+
+            // Функция экспорта в CSV
+            window.exportToCSV = function() {
+                const exportBtn = document.getElementById('exportBtn');
+                const originalText = exportBtn.innerHTML;
+                
+                // Показываем индикатор загрузки
+                exportBtn.innerHTML = '<span class="material-icons" style="margin-right: 8px;">hourglass_empty</span>Exporting...';
+                exportBtn.disabled = true;
+                
+                // Используем серверный endpoint для более надежного экспорта
+                fetch('/api/export-csv')
+                    .then(async (res) => {
+                        if (!res.ok) throw new Error('Export failed');
+                        const contentDisposition = res.headers.get('content-disposition');
+                        let fileName = 'material_data.csv';
+                        if (contentDisposition) {
+                            const match = contentDisposition.match(/filename="?([^";]+)"?/i);
+                            if (match && match[1]) fileName = match[1];
+                        }
+                        const blob = await res.blob();
+                        return { blob, fileName };
+                    })
+                    .then(({ blob, fileName }) => {
+                        // Создаем ссылку для скачивания
+                        const url = window.URL.createObjectURL(blob);
+                        const link = document.createElement('a');
+                        link.href = url;
+                        link.download = fileName;
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                        window.URL.revokeObjectURL(url);
+                        
+                        // Показываем уведомление об успешном экспорте
+                        showExportNotification();
+                    })
+                    .catch(error => {
+                        console.error('Export error:', error);
+                        showExportError();
+                    })
+                    .finally(() => {
+                        // Восстанавливаем кнопку
+                        exportBtn.innerHTML = originalText;
+                        exportBtn.disabled = false;
+                    });
+            };
+            
+            // Функция показа уведомления об экспорте
+            function showExportNotification() {
+                const notification = document.createElement('div');
+                notification.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    background: #4caf50;
+                    color: white;
+                    padding: 16px 24px;
+                    border-radius: 8px;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                    z-index: 1000;
+                    font-family: 'Roboto', sans-serif;
+                    font-weight: 500;
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    animation: slideIn 0.3s ease;
+                `;
+                notification.innerHTML = `
+                    <span class="material-icons" style="font-size: 20px;">download</span>
+                    CSV файл успешно экспортирован!
+                `;
+                
+                document.body.appendChild(notification);
+                
+                // Удаляем уведомление через 3 секунды
+                setTimeout(() => {
+                    notification.style.animation = 'slideOut 0.3s ease';
+                    setTimeout(() => {
+                        if (notification.parentNode) {
+                            notification.parentNode.removeChild(notification);
+                        }
+                    }, 300);
+                }, 3000);
+            }
+            
+            // Функция показа ошибки экспорта
+            function showExportError() {
+                const notification = document.createElement('div');
+                notification.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    background: #f44336;
+                    color: white;
+                    padding: 16px 24px;
+                    border-radius: 8px;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                    z-index: 1000;
+                    font-family: 'Roboto', sans-serif;
+                    font-weight: 500;
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    animation: slideIn 0.3s ease;
+                `;
+                notification.innerHTML = `
+                    <span class="material-icons" style="font-size: 20px;">error</span>
+                    Ошибка при экспорте CSV файла!
+                `;
+                
+                document.body.appendChild(notification);
+                
+                // Удаляем уведомление через 5 секунд
+                setTimeout(() => {
+                    notification.style.animation = 'slideOut 0.3s ease';
+                    setTimeout(() => {
+                        if (notification.parentNode) {
+                            notification.parentNode.removeChild(notification);
+                        }
+                    }, 300);
+                }, 5000);
+            }
+
+            // Добавляем Material Design ripple эффект к кнопкам
+            const buttons = document.querySelectorAll('.material-button');
+            buttons.forEach(button => {
+                button.addEventListener('click', function(e) {
+                    const ripple = document.createElement('span');
+                    const rect = this.getBoundingClientRect();
+                    const size = Math.max(rect.width, rect.height);
+                    const x = e.clientX - rect.left - size / 2;
+                    const y = e.clientY - rect.top - size / 2;
+                    
+                    ripple.style.width = ripple.style.height = size + 'px';
+                    ripple.style.left = x + 'px';
+                    ripple.style.top = y + 'px';
+                    ripple.classList.add('ripple');
+                    
+                    this.appendChild(ripple);
+                    
+                    setTimeout(() => {
+                        ripple.remove();
+                    }, 600);
+                });
+            });
+        });
+    </script>
+    
+    <style>
+        .ripple {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(0);
+            animation: ripple-animation 0.6s linear;
+            pointer-events: none;
+        }
+        
+        @keyframes ripple-animation {
+            to {
+                transform: scale(4);
+                opacity: 0;
+            }
+        }
+        
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        @keyframes slideOut {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+        }
+        
+        .material-button {
+            position: relative;
+            overflow: hidden;
+        }
+    </style>
+</body>
+</html>
